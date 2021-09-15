@@ -1,8 +1,6 @@
 #![no_main]
 #![no_std]
 #[macro_use]
-#[allow(clippy::useless_attribute)]
-#[allow(clippy::too_many_arguments)]
 extern crate alloc;
 
 use alloc::{

@@ -15,25 +15,6 @@ pub type Warehouse = BTreeMap<String, String>;
 pub type Commission = BTreeMap<String, SubCommission>;
 pub type SubCommission = BTreeMap<String, String>;
 
-pub struct METADATA(Meta, Gauge, Warehouse, Commission);
-impl METADATA {
-    pub fn new(meta: Meta, gauge: Gauge, warehouse: Warehouse, commission: Commission) -> METADATA {
-        METADATA(meta, gauge, warehouse, commission)
-    }
-}
-
-pub struct METADATA_VEC(Vec<Meta>, Vec<Gauge>, Vec<Warehouse>, Vec<Commission>);
-impl METADATA_VEC {
-    pub fn new(
-        metas: Vec<Meta>,
-        gauges: Vec<Gauge>,
-        warehouses: Vec<Warehouse>,
-        commissions: Vec<Commission>,
-    ) -> METADATA_VEC {
-        METADATA_VEC(metas, gauges, warehouses, commissions)
-    }
-}
-
 pub struct CaskInstance(TestContract);
 
 impl CaskInstance {
@@ -112,7 +93,10 @@ impl CaskInstance {
         sender: Sender,
         recipient: T,
         token_ids: Option<Vec<TokenId>>,
-        token_metadatas: METADATA_VEC,
+        token_metas: Vec<Meta>,
+        token_gauges: Vec<Gauge>,
+        token_warehouses: Vec<Warehouse>,
+        token_commissions: Vec<Commission>,
     ) {
         self.0.call_contract(
             sender,
@@ -120,10 +104,10 @@ impl CaskInstance {
             runtime_args! {
                 "recipient" => recipient.into(),
                 "token_ids" => token_ids,
-                "token_metas" => token_metadatas.0,
-                "token_gauges" => token_metadatas.1,
-                "token_warehouses" => token_metadatas.2,
-                "token_commissions" => token_metadatas.3
+                "token_metas" => token_metas,
+                "token_gauges" => token_gauges,
+                "token_warehouses" => token_warehouses,
+                "token_commissions" => token_commissions
             },
         )
     }
@@ -133,7 +117,10 @@ impl CaskInstance {
         sender: Sender,
         recipient: T,
         token_ids: Option<Vec<TokenId>>,
-        token_metadata: METADATA,
+        token_meta: Meta,
+        token_gauge: Gauge,
+        token_warehouse: Warehouse,
+        token_commission: Commission,
         count: u32,
     ) {
         self.0.call_contract(
@@ -142,10 +129,10 @@ impl CaskInstance {
             runtime_args! {
                 "recipient" => recipient.into(),
                 "token_ids" => token_ids,
-                "token_meta" => token_metadata.0,
-                "token_gauge" => token_metadata.1,
-                "token_warehouse" => token_metadata.2,
-                "token_commission" => token_metadata.3,
+                "token_meta" => token_meta,
+                "token_gauge" => token_gauge,
+                "token_warehouse" => token_warehouse,
+                "token_commission" => token_commission,
                 "count" => count
             },
         )

@@ -3,8 +3,7 @@ use casper_types::{Key, U256};
 use test_env::{Sender, TestEnv};
 
 use crate::cask_instance::{
-    CaskInstance, Commission, Gauge, Meta, SubCommission, TokenId, Warehouse, METADATA,
-    METADATA_VEC,
+    CaskInstance, Commission, Gauge, Meta, SubCommission, TokenId, Warehouse,
 };
 
 const NAME: &str = "CaskNFT";
@@ -183,12 +182,10 @@ fn test_mint_from_minter() {
         Sender(ali),
         bob,
         Some(vec![token_id.clone()]),
-        METADATA_VEC::new(
-            vec![token_meta.clone()],
-            vec![token_gauge.clone()],
-            vec![token_warehouse.clone()],
-            vec![token_commission],
-        ),
+        vec![token_meta.clone()],
+        vec![token_gauge.clone()],
+        vec![token_warehouse.clone()],
+        vec![token_commission],
     );
 
     let user_token_meta = token.token_meta(token_id.clone());
@@ -230,7 +227,10 @@ fn test_mint_with_wrong_arguments() {
         Sender(ali),
         bob,
         None,
-        METADATA_VEC::new(vec![token_meta], vec![], vec![], vec![token_commission]),
+        vec![token_meta],
+        vec![],
+        vec![],
+        vec![token_commission],
     );
 }
 
@@ -254,12 +254,10 @@ fn test_mint_from_non_minter() {
         Sender(ali),
         bob,
         Some(vec![token_id]),
-        METADATA_VEC::new(
-            vec![token_meta],
-            vec![token_gauge],
-            vec![token_warehouse],
-            vec![token_commission],
-        ),
+        vec![token_meta],
+        vec![token_gauge],
+        vec![token_warehouse],
+        vec![token_commission],
     );
 }
 
@@ -283,12 +281,10 @@ fn test_mint_copies_from_minter() {
         Sender(ali),
         bob,
         None,
-        METADATA::new(
-            token_meta.clone(),
-            token_gauge,
-            token_warehouse,
-            token_commission,
-        ),
+        token_meta.clone(),
+        token_gauge,
+        token_warehouse,
+        token_commission,
         3,
     );
 
@@ -337,7 +333,10 @@ fn test_burn_from_minter() {
         Sender(owner),
         bob,
         None,
-        METADATA::new(token_meta, token_gauge, token_warehouse, token_commission),
+        token_meta,
+        token_gauge,
+        token_warehouse,
+        token_commission,
         2,
     );
 
@@ -374,7 +373,10 @@ fn test_burn_from_non_minter() {
         Sender(owner),
         bob,
         None,
-        METADATA::new(token_meta, token_gauge, token_warehouse, token_commission),
+        token_meta,
+        token_gauge,
+        token_warehouse,
+        token_commission,
         2,
     );
 
@@ -400,7 +402,10 @@ fn test_transfer_from_owner() {
         Sender(owner),
         ali,
         None,
-        METADATA::new(token_meta, token_gauge, token_warehouse, token_commission),
+        token_meta,
+        token_gauge,
+        token_warehouse,
+        token_commission,
         2,
     );
     let first_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(0));
@@ -458,7 +463,10 @@ fn test_transfer_from_admin() {
         Sender(owner),
         ali,
         None,
-        METADATA::new(token_meta, token_gauge, token_warehouse, token_commission),
+        token_meta,
+        token_gauge,
+        token_warehouse,
+        token_commission,
         2,
     );
     let first_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(0));
@@ -517,7 +525,10 @@ fn test_transfer_from_minter() {
         Sender(owner),
         ali,
         None,
-        METADATA::new(token_meta, token_gauge, token_warehouse, token_commission),
+        token_meta,
+        token_gauge,
+        token_warehouse,
+        token_commission,
         2,
     );
     let first_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(0));
@@ -555,7 +566,10 @@ fn test_transfer() {
         Sender(owner),
         ali,
         None,
-        METADATA::new(token_meta, token_gauge, token_warehouse, token_commission),
+        token_meta,
+        token_gauge,
+        token_warehouse,
+        token_commission,
         2,
     );
     let first_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(0));
@@ -614,12 +628,10 @@ fn test_token_meta() {
         Sender(owner),
         ali,
         Some(vec![token_id.clone()]),
-        METADATA::new(
-            token_meta.clone(),
-            token_gauge.clone(),
-            token_warehouse.clone(),
-            token_commission,
-        ),
+        token_meta.clone(),
+        token_gauge.clone(),
+        token_warehouse.clone(),
+        token_commission,
         1,
     );
 
@@ -662,7 +674,10 @@ fn test_token_metadata_update_from_minter() {
         Sender(owner),
         ali,
         Some(vec![token_id.clone()]),
-        METADATA::new(token_meta, token_gauge, token_warehouse, token_commission),
+        token_meta,
+        token_gauge,
+        token_warehouse,
+        token_commission,
         1,
     );
     token.grant_minter(Sender(owner), ali);
@@ -692,7 +707,10 @@ fn test_token_metadata_update_from_owner() {
         Sender(owner),
         ali,
         Some(vec![token_id.clone()]),
-        METADATA::new(token_meta, token_gauge, token_warehouse, token_commission),
+        token_meta,
+        token_gauge,
+        token_warehouse,
+        token_commission,
         1,
     );
     token.update_token_meta(Sender(ali), token_id, meta::medium_cask());
@@ -717,7 +735,10 @@ fn test_token_commission_update_from_admin() {
         Sender(owner),
         ali,
         Some(vec![token_id.clone()]),
-        METADATA::new(token_meta, token_gauge, token_warehouse, token_commission),
+        token_meta,
+        token_gauge,
+        token_warehouse,
+        token_commission,
         1,
     );
     token.update_token_commission(
@@ -781,7 +802,10 @@ fn test_token_commission_update_from_minter() {
         Sender(owner),
         ali,
         Some(vec![token_id.clone()]),
-        METADATA::new(token_meta, token_gauge, token_warehouse, token_commission),
+        token_meta,
+        token_gauge,
+        token_warehouse,
+        token_commission,
         1,
     );
     token.grant_minter(Sender(owner), bob);
@@ -814,7 +838,10 @@ fn test_token_commission_update_from_owner() {
         Sender(owner),
         ali,
         Some(vec![token_id.clone()]),
-        METADATA::new(token_meta, token_gauge, token_warehouse, token_commission),
+        token_meta,
+        token_gauge,
+        token_warehouse,
+        token_commission,
         1,
     );
     token.update_token_commission(
