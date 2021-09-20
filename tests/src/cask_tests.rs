@@ -2,9 +2,7 @@ use casper_engine_test_support::AccountHash;
 use casper_types::{Key, U256};
 use test_env::{Sender, TestEnv};
 
-use crate::cask_instance::{
-    CaskInstance, Commission, Gauge, Meta, SubCommission, TokenId, Warehouse,
-};
+use crate::cask_instance::{CaskInstance, Commission, Gauge, Meta, TokenId, Warehouse};
 
 const NAME: &str = "CaskNFT";
 const SYMBOL: &str = "CNFT";
@@ -63,7 +61,7 @@ mod warehouse {
 mod commission {
     use casper_types::Key;
 
-    use super::{Commission, SubCommission};
+    use super::Commission;
     pub fn commission(
         properties: Vec<String>,
         accounts: Vec<Key>,
@@ -76,17 +74,10 @@ mod commission {
             .zip(rates.iter())
             .map(|((x, y), z)| (x, y, z))
         {
-            let sub = sub_commission(*account, rate.clone());
-            commission.insert(property.clone(), sub);
+            commission.insert(format!("{}_account", property.clone()), account.to_string());
+            commission.insert(format!("{}_rate", property.clone()), rate.clone());
         }
         commission
-    }
-
-    pub fn sub_commission(account: Key, rate: String) -> SubCommission {
-        let mut sub_commission = SubCommission::new();
-        sub_commission.insert("Rate".to_string(), rate);
-        sub_commission.insert("Account".to_string(), account.to_string());
-        sub_commission
     }
 }
 
@@ -185,7 +176,7 @@ fn test_mint_from_minter() {
         vec![token_meta.clone()],
         vec![token_gauge.clone()],
         vec![token_warehouse.clone()],
-        vec![token_commission],
+        vec![token_commission.clone()],
     );
 
     let user_token_meta = token.token_meta(token_id.clone());
@@ -197,12 +188,8 @@ fn test_mint_from_minter() {
     let user_token_warehouse = token.token_warehouse(token_id.clone());
     assert_eq!(user_token_warehouse.unwrap(), token_warehouse);
 
-    let user_token_commission_artist =
-        token.token_commission_by_property(token_id.clone(), String::from("artist"));
-    assert_eq!(
-        user_token_commission_artist.unwrap(),
-        commission::sub_commission(ali.into(), "10".to_string())
-    );
+    let user_token_commission = token.token_commission(token_id.clone());
+    assert_eq!(user_token_commission.unwrap(), token_commission);
 
     let first_user_token = token.get_token_by_index(Key::Account(bob), U256::zero());
     assert_eq!(first_user_token, Some(token_id));
@@ -631,7 +618,7 @@ fn test_token_meta() {
         token_meta.clone(),
         token_gauge.clone(),
         token_warehouse.clone(),
-        token_commission,
+        token_commission.clone(),
         1,
     );
 
@@ -644,12 +631,8 @@ fn test_token_meta() {
     let user_token_warehouse = token.token_warehouse(token_id.clone());
     assert_eq!(user_token_warehouse.unwrap(), token_warehouse);
 
-    let user_token_commission_artist =
-        token.token_commission_by_property(token_id.clone(), String::from("broker"));
-    assert_eq!(
-        user_token_commission_artist.unwrap(),
-        commission::sub_commission(bob.into(), "12".to_string())
-    );
+    let user_token_commission = token.token_commission(token_id.clone());
+    assert_eq!(user_token_commission.unwrap(), token_commission);
 
     let first_user_token = token.get_token_by_index(Key::Account(ali), U256::zero());
     assert_eq!(first_user_token, Some(token_id));
@@ -749,11 +732,14 @@ fn test_token_commission_update_from_admin() {
         "UPDATE".to_string(),
         "12".to_string(),
     );
-    let mut user_token_sub_commission =
-        token.token_commission_by_property(token_id.clone(), String::from("artist"));
+    let mut user_token_commission = token.token_commission(token_id.clone());
     assert_eq!(
-        user_token_sub_commission.unwrap(),
-        commission::sub_commission(owner.into(), "12".to_string())
+        user_token_commission.unwrap(),
+        commission::commission(
+            vec!["artist".to_string()],
+            vec![owner.into()],
+            vec!["12".to_string()],
+        )
     );
     token.update_token_commission(
         Sender(owner),
@@ -763,11 +749,14 @@ fn test_token_commission_update_from_admin() {
         "ADD".to_string(),
         "10".to_string(),
     );
-    user_token_sub_commission =
-        token.token_commission_by_property(token_id.clone(), String::from("broker"));
+    user_token_commission = token.token_commission(token_id.clone());
     assert_eq!(
-        user_token_sub_commission.unwrap(),
-        commission::sub_commission(bob.into(), "10".to_string())
+        user_token_commission.unwrap(),
+        commission::commission(
+            vec!["artist".to_string(), "broker".to_string()],
+            vec![owner.into(), bob.into()],
+            vec!["12".to_string(), "10".to_string()],
+        )
     );
     token.update_token_commission(
         Sender(owner),
@@ -777,9 +766,15 @@ fn test_token_commission_update_from_admin() {
         "DELETE".to_string(),
         String::new(),
     );
-    user_token_sub_commission =
-        token.token_commission_by_property(token_id, String::from("broker"));
-    assert_eq!(user_token_sub_commission, None);
+    user_token_commission = token.token_commission(token_id);
+    assert_eq!(
+        user_token_commission.unwrap(),
+        commission::commission(
+            vec!["artist".to_string()],
+            vec![owner.into()],
+            vec!["12".to_string()],
+        )
+    );
 }
 
 #[test]

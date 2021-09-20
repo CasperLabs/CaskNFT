@@ -34,8 +34,7 @@ use custom_data::{Commissions, Gauges, Warehouses};
 
 pub type Gauge = BTreeMap<String, String>;
 pub type Warehouse = BTreeMap<String, String>;
-pub type Commission = BTreeMap<String, SubCommission>;
-pub type SubCommission = BTreeMap<String, String>;
+pub type Commission = BTreeMap<String, String>;
 pub type Reference = BTreeMap<String, String>;
 
 #[derive(Default)]
@@ -97,8 +96,8 @@ impl CaskToken {
         Ok(())
     }
 
-    fn token_commission(&self, token_id: TokenId, property: String) -> Option<SubCommission> {
-        Commissions::instance().get_by_property(&token_id, &property)
+    fn token_commission(&self, token_id: TokenId) -> Option<Commission> {
+        Commissions::instance().get(&token_id)
     }
 
     fn set_token_commission(
@@ -115,22 +114,25 @@ impl CaskToken {
         let commissions_dict = Commissions::instance();
         match mode.as_str() {
             "ADD" => {
-                let mut sub_commission = BTreeMap::new();
-                sub_commission.insert("Account".to_string(), account.to_string());
-                sub_commission.insert("Rate".to_string(), value);
-                commissions_dict.set_by_property(&token_id, &property, sub_commission);
+                let mut commission = commissions_dict.get(&token_id).unwrap_or_default();
+                commission.insert(format!("{}_account", property), account.to_string());
+                commission.insert(format!("{}_rate", property), value);
+                commissions_dict.set(&token_id, commission);
             }
             "UPDATE" => {
                 if account.to_string().is_empty() || value.is_empty() {
                     return Err(Error::WrongArguments);
                 }
-                let mut sub_commission = BTreeMap::new();
-                sub_commission.insert("Account".to_string(), account.to_string());
-                sub_commission.insert("Rate".to_string(), value);
-                commissions_dict.set_by_property(&token_id, &property, sub_commission);
+                let mut commission = commissions_dict.get(&token_id).unwrap_or_default();
+                commission.insert(format!("{}_account", property), account.to_string());
+                commission.insert(format!("{}_rate", property), value);
+                commissions_dict.set(&token_id, commission);
             }
             "DELETE" => {
-                commissions_dict.remove_by_property(&token_id, &property);
+                let mut commission = commissions_dict.get(&token_id).unwrap_or_default();
+                commission.remove(&format!("{}_account", property));
+                commission.remove(&format!("{}_rate", property));
+                commissions_dict.set(&token_id, commission);
             }
             _ => {
                 return Err(Error::WrongArguments);
@@ -384,8 +386,7 @@ fn token_warehouse() {
 #[no_mangle]
 fn token_commission() {
     let token_id = runtime::get_named_arg::<TokenId>("token_id");
-    let property = runtime::get_named_arg::<String>("property");
-    let ret = CaskToken::default().token_commission(token_id, property);
+    let ret = CaskToken::default().token_commission(token_id);
     runtime::ret(CLValue::from_t(ret).unwrap_or_revert());
 }
 

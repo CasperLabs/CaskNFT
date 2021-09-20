@@ -12,8 +12,7 @@ pub type TokenId = String;
 pub type Meta = BTreeMap<String, String>;
 pub type Gauge = BTreeMap<String, String>;
 pub type Warehouse = BTreeMap<String, String>;
-pub type Commission = BTreeMap<String, SubCommission>;
-pub type SubCommission = BTreeMap<String, String>;
+pub type Commission = BTreeMap<String, String>;
 
 pub struct CaskInstance(TestContract);
 
@@ -262,19 +261,8 @@ impl CaskInstance {
         self.0.query_dictionary("warehouses", token_id)
     }
 
-    pub fn token_commission_by_property(
-        &self,
-        token_id: TokenId,
-        property: String,
-    ) -> Option<SubCommission> {
-        let commission: Commission = self
-            .0
-            .query_dictionary("commissions", token_id)
-            .unwrap_or_default();
-        if let Some(t) = commission.get(&property) {
-            return Some(t.clone());
-        }
-        None
+    pub fn token_commission(&self, token_id: TokenId) -> Option<Commission> {
+        self.0.query_dictionary("commissions", token_id)
     }
 
     pub fn get_token_by_index<T: Into<Key>>(&self, account: T, index: U256) -> Option<TokenId> {

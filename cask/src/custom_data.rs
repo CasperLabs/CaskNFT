@@ -1,7 +1,6 @@
-use alloc::{collections::BTreeMap, string::ToString};
 use cep47::contract_utils::Dict;
 
-use crate::{Commission, Gauge, SubCommission, Warehouse};
+use crate::{Commission, Gauge, Warehouse};
 
 const GAUGES_DICT: &str = "gauges";
 const WAREHOUSES_DICT: &str = "warehouses";
@@ -84,37 +83,5 @@ impl Commissions {
 
     pub fn set(&self, key: &str, value: Commission) {
         self.dict.set(key, value);
-    }
-
-    pub fn get_by_property(&self, key: &str, property: &str) -> Option<SubCommission> {
-        let commission: Commission = self.dict.get(key).unwrap_or_default();
-        if let Some(sub) = commission.get(property) {
-            return Some(sub.clone());
-        }
-        None
-    }
-
-    pub fn set_by_property(&self, key: &str, property: &str, value: SubCommission) {
-        let commission = match self.get(key) {
-            Some(commission) => {
-                let mut new_one = commission;
-                new_one.insert(property.to_string(), value);
-                new_one
-            }
-            None => {
-                let mut new_one = BTreeMap::new();
-                new_one.insert(property.to_string(), value);
-                new_one
-            }
-        };
-        self.dict.set(key, commission);
-    }
-
-    pub fn remove_by_property(&self, key: &str, property: &str) {
-        if let Some(commission) = self.get(key) {
-            let mut new_one = commission;
-            new_one.remove(property);
-            self.dict.set(key, new_one);
-        };
     }
 }
