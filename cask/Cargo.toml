@@ -1,0 +1,19 @@
+[package]
+name = "cask"
+version = "0.1.0"
+authors = ["astro019 <dmitry.yakov7@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+contract = { package="casper-contract", version = "1.3.2" }
+types = { package="casper-types", version = "1.3.2" }
+cep47 = { git="https://github.com/casper-ecosystem/casper-nft-cep47", branch="feature/reorg_lib" }
+
+[[bin]]
+name = "cask-token"
+path = "src/cask_token.rs"
+bench = false
+doctest = false
+test = false
