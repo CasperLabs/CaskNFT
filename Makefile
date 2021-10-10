@@ -3,6 +3,8 @@ prepare:
 
 build-contract:
 	cargo build --release -p cask --target wasm32-unknown-unknown
+	cargo build --release -p cask-collectible --target wasm32-unknown-unknown
+
 
 test-only:
 	cargo test --workspace

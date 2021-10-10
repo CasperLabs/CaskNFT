@@ -1,6 +1,6 @@
 use cep47::contract_utils::{ContractContext, ContractStorage, Dict};
-use contract::{contract_api::storage, unwrap_or_revert::UnwrapOrRevert};
-use types::Key;
+use casper_contract::{contract_api::storage, unwrap_or_revert::UnwrapOrRevert};
+use casper_types::Key;
 
 const MINTERS_DICT: &str = "minters";
 pub trait MinterControl<Storage: ContractStorage>: ContractContext<Storage> {

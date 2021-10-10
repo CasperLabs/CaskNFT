@@ -1,5 +1,5 @@
 [package]
-name = "cask"
+name = "cask-collectible"
 version = "0.1.0"
 authors = ["astro019 <dmitry.yakov7@gmail.com>"]
 edition = "2018"
@@ -13,8 +13,8 @@ cep47 = { git="https://github.com/casper-ecosystem/casper-nft-cep47", branch="fe
 contract_utils_ext = { path = "../utils/contract-utils-ext" }
 
 [[bin]]
-name = "cask-token"
-path = "src/cask_token.rs"
+name = "cask-collectible-token"
+path = "src/cask_collectible_token.rs"
 bench = false
 doctest = false
 test = false

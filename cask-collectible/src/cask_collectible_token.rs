@@ -10,8 +10,8 @@ use alloc::{
     vec::Vec,
 };
 use cep47::{
-    contract_utils::{AdminControl, ContractContext, OnChainContractStorage },
-    Error, Meta, TokenId, CEP47
+    contract_utils::{AdminControl, ContractContext, OnChainContractStorage},
+    Error, Meta, TokenId, CEP47,
 };
 use contract::{
     contract_api::{
@@ -26,72 +26,30 @@ use types::{
     EntryPointAccess, EntryPointType, EntryPoints, Group, Key, Parameter, RuntimeArgs, URef, U256,
 };
 
-use contract_utils_ext::{MinterControl, Commission, Commissions};
+use contract_utils_ext::{Commission, Commissions};
+
 
 #[derive(Default)]
-struct CaskToken(OnChainContractStorage);
+struct CaskCollectibleToken(OnChainContractStorage);
 
-impl ContractContext<OnChainContractStorage> for CaskToken {
+impl ContractContext<OnChainContractStorage> for CaskCollectibleToken {
     fn storage(&self) -> &OnChainContractStorage {
         &self.0
     }
 }
 
-impl CEP47<OnChainContractStorage> for CaskToken {}
-impl AdminControl<OnChainContractStorage> for CaskToken {}
-impl MinterControl<OnChainContractStorage> for CaskToken {}
+impl CEP47<OnChainContractStorage> for CaskCollectibleToken {}
+impl AdminControl<OnChainContractStorage> for CaskCollectibleToken {}
 
-impl CaskToken {
+impl CaskCollectibleToken {
     fn constructor(&mut self, name: String, symbol: String, meta: Meta) {
         CEP47::init(self, name, symbol, meta);
         AdminControl::init(self);
-        MinterControl::init(self);
         Commissions::init();
     }
 
     fn token_commission(&self, token_id: TokenId) -> Option<Commission> {
         Commissions::instance().get(&token_id)
-    }
-
-    fn set_token_commission(
-        &mut self,
-        token_id: TokenId,
-        property: String,
-        mode: String,
-        account: Key,
-        value: String,
-    ) -> Result<(), Error> {
-        if self.owner_of(token_id.clone()).is_none() {
-            return Err(Error::TokenIdDoesntExist);
-        };
-        let commissions_dict = Commissions::instance();
-        match mode.as_str() {
-            "ADD" => {
-                let mut commission = commissions_dict.get(&token_id).unwrap_or_default();
-                commission.insert(format!("{}_account", property), account.to_string());
-                commission.insert(format!("{}_rate", property), value);
-                commissions_dict.set(&token_id, commission);
-            }
-            "UPDATE" => {
-                if account.to_string().is_empty() || value.is_empty() {
-                    return Err(Error::WrongArguments);
-                }
-                let mut commission = commissions_dict.get(&token_id).unwrap_or_default();
-                commission.insert(format!("{}_account", property), account.to_string());
-                commission.insert(format!("{}_rate", property), value);
-                commissions_dict.set(&token_id, commission);
-            }
-            "DELETE" => {
-                let mut commission = commissions_dict.get(&token_id).unwrap_or_default();
-                commission.remove(&format!("{}_account", property));
-                commission.remove(&format!("{}_rate", property));
-                commissions_dict.set(&token_id, commission);
-            }
-            _ => {
-                return Err(Error::WrongArguments);
-            }
-        }
-        Ok(())
     }
 
     fn mint(
@@ -101,8 +59,8 @@ impl CaskToken {
         token_metas: Vec<Meta>,
         token_commissions: Vec<Commission>,
     ) -> Result<Vec<TokenId>, Error> {
-        let caller = CaskToken::default().get_caller();
-        if !CaskToken::default().is_minter() && !CaskToken::default().is_admin(caller) {
+        let caller = CaskCollectibleToken::default().get_caller();
+        if !CaskCollectibleToken::default().is_admin(caller) {
             revert(ApiError::User(20));
         }
         let mut valid_token_commissions = token_commissions;
@@ -133,79 +91,13 @@ impl CaskToken {
         Ok(confirmed_token_ids)
     }
 
-    fn mint_copies(
-        &mut self,
-        recipient: Key,
-        token_ids: Option<Vec<TokenId>>,
-        token_meta: Meta,
-        token_commission: Commission,
-        count: u32,
-    ) -> Result<Vec<TokenId>, Error> {
-        let caller = CaskToken::default().get_caller();
-        if !CaskToken::default().is_minter() && !CaskToken::default().is_admin(caller) {
-            revert(ApiError::User(20));
-        }
-        if let Some(token_ids) = &token_ids {
-            if token_ids.len() != count as usize {
-                return Err(Error::WrongArguments);
-            }
-        }
-        let token_metas = vec![token_meta; count as usize];
-        let token_commissions = vec![token_commission; count as usize];
-        self.mint(
-            recipient,
-            token_ids,
-            token_metas,
-            token_commissions,
-        )
-    }
-
     fn burn(&mut self, owner: Key, token_ids: Vec<TokenId>) -> Result<(), Error> {
-        let caller = CaskToken::default().get_caller();
-        if !CaskToken::default().is_minter() && !CaskToken::default().is_admin(caller) {
-            revert(ApiError::User(20));
-        }
-
         CEP47::burn_internal(self, owner, token_ids.clone()).unwrap_or_revert();
 
         let commissions_dict = Commissions::instance();
         for token_id in &token_ids {
             commissions_dict.remove(token_id);
         }
-        Ok(())
-    }
-
-    fn update_token_meta(&mut self, token_id: TokenId, token_meta: Meta) -> Result<(), Error> {
-        let caller = CaskToken::default().get_caller();
-        if !CaskToken::default().is_minter() && !CaskToken::default().is_admin(caller) {
-            revert(ApiError::User(20));
-        }
-        // Get the existing metadata first
-        let mut merged_meta = CaskToken::default()
-            .token_meta(token_id.clone())
-            .unwrap_or_default();
-        merged_meta.append(&mut token_meta.clone());
-
-        CaskToken::default()
-            .set_token_meta(token_id, merged_meta)
-            .unwrap_or_revert();
-        Ok(())
-    }
-
-    fn update_token_commission(
-        &mut self,
-        token_id: TokenId,
-        property: String,
-        mode: String,
-        account: Key,
-        value: String,
-    ) -> Result<(), Error> {
-        let caller = CaskToken::default().get_caller();
-        if !CaskToken::default().is_admin(caller) {
-            revert(ApiError::User(20));
-        }
-        self.set_token_commission(token_id, property, mode, account, value)
-            .unwrap_or_revert();
         Ok(())
     }
 }
@@ -216,45 +108,45 @@ fn constructor() {
     let symbol = runtime::get_named_arg::<String>("symbol");
     let meta = runtime::get_named_arg::<Meta>("meta");
     let admin = runtime::get_named_arg::<Key>("admin");
-    CaskToken::default().constructor(name, symbol, meta);
-    CaskToken::default().add_admin_without_checked(admin);
+    CaskCollectibleToken::default().constructor(name, symbol, meta);
+    CaskCollectibleToken::default().add_admin_without_checked(admin);
 }
 
 #[no_mangle]
 fn name() {
-    let ret = CaskToken::default().name();
+    let ret = CaskCollectibleToken::default().name();
     runtime::ret(CLValue::from_t(ret).unwrap_or_revert());
 }
 
 #[no_mangle]
 fn symbol() {
-    let ret = CaskToken::default().symbol();
+    let ret = CaskCollectibleToken::default().symbol();
     runtime::ret(CLValue::from_t(ret).unwrap_or_revert());
 }
 
 #[no_mangle]
 fn meta() {
-    let ret = CaskToken::default().meta();
+    let ret = CaskCollectibleToken::default().meta();
     runtime::ret(CLValue::from_t(ret).unwrap_or_revert());
 }
 
 #[no_mangle]
 fn total_supply() {
-    let ret = CaskToken::default().total_supply();
+    let ret = CaskCollectibleToken::default().total_supply();
     runtime::ret(CLValue::from_t(ret).unwrap_or_revert());
 }
 
 #[no_mangle]
 fn balance_of() {
     let owner = runtime::get_named_arg::<Key>("owner");
-    let ret = CaskToken::default().balance_of(owner);
+    let ret = CaskCollectibleToken::default().balance_of(owner);
     runtime::ret(CLValue::from_t(ret).unwrap_or_revert());
 }
 
 #[no_mangle]
 fn owner_of() {
     let token_id = runtime::get_named_arg::<TokenId>("token_id");
-    let ret = CaskToken::default().owner_of(token_id);
+    let ret = CaskCollectibleToken::default().owner_of(token_id);
     runtime::ret(CLValue::from_t(ret).unwrap_or_revert());
 }
 
@@ -262,43 +154,22 @@ fn owner_of() {
 fn get_token_by_index() {
     let owner = runtime::get_named_arg::<Key>("owner");
     let index = runtime::get_named_arg::<U256>("index");
-    let ret = CaskToken::default().get_token_by_index(owner, index);
+    let ret = CaskCollectibleToken::default().get_token_by_index(owner, index);
     runtime::ret(CLValue::from_t(ret).unwrap_or_revert());
 }
 
 #[no_mangle]
 fn token_meta() {
     let token_id = runtime::get_named_arg::<TokenId>("token_id");
-    let ret = CaskToken::default().token_meta(token_id);
+    let ret = CaskCollectibleToken::default().token_meta(token_id);
     runtime::ret(CLValue::from_t(ret).unwrap_or_revert());
 }
 
 #[no_mangle]
 fn token_commission() {
     let token_id = runtime::get_named_arg::<TokenId>("token_id");
-    let ret = CaskToken::default().token_commission(token_id);
+    let ret = CaskCollectibleToken::default().token_commission(token_id);
     runtime::ret(CLValue::from_t(ret).unwrap_or_revert());
-}
-
-#[no_mangle]
-fn update_token_meta() {
-    let token_id = runtime::get_named_arg::<TokenId>("token_id");
-    let token_meta = runtime::get_named_arg::<Meta>("token_meta");
-    CaskToken::default()
-        .update_token_meta(token_id, token_meta)
-        .unwrap_or_revert();
-}
-
-#[no_mangle]
-fn update_token_commission() {
-    let token_id = runtime::get_named_arg::<TokenId>("token_id");
-    let property = runtime::get_named_arg::<String>("property");
-    let account = runtime::get_named_arg::<Key>("account");
-    let mode = runtime::get_named_arg::<String>("mode");
-    let value = runtime::get_named_arg::<String>("value");
-    CaskToken::default()
-        .update_token_commission(token_id, property, mode, account, value)
-        .unwrap_or_revert();
 }
 
 #[no_mangle]
@@ -307,7 +178,7 @@ fn mint() {
     let token_ids = runtime::get_named_arg::<Option<Vec<TokenId>>>("token_ids");
     let token_metas = runtime::get_named_arg::<Vec<Meta>>("token_metas");
     let token_commissions = runtime::get_named_arg::<Vec<Commission>>("token_commissions");
-    CaskToken::default()
+    CaskCollectibleToken::default()
         .mint(
             recipient,
             token_ids,
@@ -318,28 +189,10 @@ fn mint() {
 }
 
 #[no_mangle]
-fn mint_copies() {
-    let recipient = runtime::get_named_arg::<Key>("recipient");
-    let token_ids = runtime::get_named_arg::<Option<Vec<TokenId>>>("token_ids");
-    let token_meta = runtime::get_named_arg::<Meta>("token_meta");
-    let token_commission = runtime::get_named_arg::<Commission>("token_commission");
-    let count = runtime::get_named_arg::<u32>("count");
-    CaskToken::default()
-        .mint_copies(
-            recipient,
-            token_ids,
-            token_meta,
-            token_commission,
-            count,
-        )
-        .unwrap_or_revert();
-}
-
-#[no_mangle]
 fn burn() {
     let owner = runtime::get_named_arg::<Key>("owner");
     let token_ids = runtime::get_named_arg::<Vec<TokenId>>("token_ids");
-    CaskToken::default()
+    CaskCollectibleToken::default()
         .burn(owner, token_ids)
         .unwrap_or_revert()
 }
@@ -348,7 +201,7 @@ fn burn() {
 fn transfer() {
     let recipient = runtime::get_named_arg::<Key>("recipient");
     let token_ids = runtime::get_named_arg::<Vec<TokenId>>("token_ids");
-    CaskToken::default()
+    CaskCollectibleToken::default()
         .transfer(recipient, token_ids)
         .unwrap_or_revert();
 }
@@ -358,42 +211,28 @@ fn transfer_from() {
     let sender = runtime::get_named_arg::<Key>("sender");
     let recipient = runtime::get_named_arg::<Key>("recipient");
     let token_ids = runtime::get_named_arg::<Vec<TokenId>>("token_ids");
-    let caller = CaskToken::default().get_caller();
-    if CaskToken::default().is_admin(caller) {
-        CaskToken::default()
+    let caller = CaskCollectibleToken::default().get_caller();
+    if CaskCollectibleToken::default().is_admin(caller) {
+        CaskCollectibleToken::default()
             .transfer_from_internal(sender, recipient, token_ids)
             .unwrap_or_revert();
     } else {
-        CaskToken::default()
+        CaskCollectibleToken::default()
             .transfer_from(sender, recipient, token_ids)
             .unwrap_or_revert();
     }
 }
 
 #[no_mangle]
-fn grant_minter() {
-    let minter = runtime::get_named_arg::<Key>("minter");
-    CaskToken::default().assert_caller_is_admin();
-    CaskToken::default().add_minter(minter);
-}
-
-#[no_mangle]
-fn revoke_minter() {
-    let minter = runtime::get_named_arg::<Key>("minter");
-    CaskToken::default().assert_caller_is_admin();
-    CaskToken::default().revoke_minter(minter);
-}
-
-#[no_mangle]
 fn grant_admin() {
     let admin = runtime::get_named_arg::<Key>("admin");
-    CaskToken::default().add_admin(admin);
+    CaskCollectibleToken::default().add_admin(admin);
 }
 
 #[no_mangle]
 fn revoke_admin() {
     let admin = runtime::get_named_arg::<Key>("admin");
-    CaskToken::default().disable_admin(admin);
+    CaskCollectibleToken::default().disable_admin(admin);
 }
 
 #[no_mangle]
@@ -542,29 +381,6 @@ fn get_entry_points() -> EntryPoints {
             Parameter::new("property", String::cl_type()),
         ],
         Commission::cl_type(),
-        EntryPointAccess::Public,
-        EntryPointType::Contract,
-    ));
-    entry_points.add_entry_point(EntryPoint::new(
-        "update_token_meta",
-        vec![
-            Parameter::new("token_id", TokenId::cl_type()),
-            Parameter::new("token_meta", Meta::cl_type()),
-        ],
-        <()>::cl_type(),
-        EntryPointAccess::Public,
-        EntryPointType::Contract,
-    ));
-    entry_points.add_entry_point(EntryPoint::new(
-        "update_token_commission",
-        vec![
-            Parameter::new("token_id", TokenId::cl_type()),
-            Parameter::new("property", String::cl_type()),
-            Parameter::new("account", Key::cl_type()),
-            Parameter::new("mode", String::cl_type()),
-            Parameter::new("value", String::cl_type()),
-        ],
-        <()>::cl_type(),
         EntryPointAccess::Public,
         EntryPointType::Contract,
     ));

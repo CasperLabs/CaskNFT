@@ -2,6 +2,7 @@
 
 members = [
 	"cask",
+	"cask-collectible",
 	"tests"
 ]
 

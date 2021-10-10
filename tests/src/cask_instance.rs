@@ -93,8 +93,6 @@ impl CaskInstance {
         recipient: T,
         token_ids: Option<Vec<TokenId>>,
         token_metas: Vec<Meta>,
-        token_gauges: Vec<Gauge>,
-        token_warehouses: Vec<Warehouse>,
         token_commissions: Vec<Commission>,
     ) {
         self.0.call_contract(
@@ -104,8 +102,6 @@ impl CaskInstance {
                 "recipient" => recipient.into(),
                 "token_ids" => token_ids,
                 "token_metas" => token_metas,
-                "token_gauges" => token_gauges,
-                "token_warehouses" => token_warehouses,
                 "token_commissions" => token_commissions
             },
         )
@@ -117,8 +113,6 @@ impl CaskInstance {
         recipient: T,
         token_ids: Option<Vec<TokenId>>,
         token_meta: Meta,
-        token_gauge: Gauge,
-        token_warehouse: Warehouse,
         token_commission: Commission,
         count: u32,
     ) {
@@ -129,8 +123,6 @@ impl CaskInstance {
                 "recipient" => recipient.into(),
                 "token_ids" => token_ids,
                 "token_meta" => token_meta,
-                "token_gauge" => token_gauge,
-                "token_warehouse" => token_warehouse,
                 "token_commission" => token_commission,
                 "count" => count
             },
@@ -173,33 +165,6 @@ impl CaskInstance {
             runtime_args! {
                 "token_id" => token_id,
                 "token_meta" => token_meta
-            },
-        )
-    }
-
-    pub fn update_token_gauge(&self, sender: Sender, token_id: TokenId, token_gauge: Gauge) {
-        self.0.call_contract(
-            sender,
-            "update_token_gauge",
-            runtime_args! {
-                "token_id" => token_id,
-                "token_gauge" => token_gauge
-            },
-        )
-    }
-
-    pub fn update_token_warehouse(
-        &self,
-        sender: Sender,
-        token_id: TokenId,
-        token_warehouse: Warehouse,
-    ) {
-        self.0.call_contract(
-            sender,
-            "update_token_warehouse",
-            runtime_args! {
-                "token_id" => token_id,
-                "token_warehouse" => token_warehouse
             },
         )
     }
@@ -251,14 +216,6 @@ impl CaskInstance {
 
     pub fn token_meta(&self, token_id: TokenId) -> Option<Meta> {
         self.0.query_dictionary("metadata", token_id)
-    }
-
-    pub fn token_gauge(&self, token_id: TokenId) -> Option<Gauge> {
-        self.0.query_dictionary("gauges", token_id)
-    }
-
-    pub fn token_warehouse(&self, token_id: TokenId) -> Option<Warehouse> {
-        self.0.query_dictionary("warehouses", token_id)
     }
 
     pub fn token_commission(&self, token_id: TokenId) -> Option<Commission> {
