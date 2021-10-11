@@ -35,7 +35,6 @@ use custom_data::{Commissions, Gauges, Warehouses};
 pub type Gauge = BTreeMap<String, String>;
 pub type Warehouse = BTreeMap<String, String>;
 pub type Commission = BTreeMap<String, String>;
-pub type Reference = BTreeMap<String, String>;
 
 #[derive(Default)]
 struct CaskToken(OnChainContractStorage);
@@ -246,9 +245,11 @@ impl CaskToken {
 
         let gauges_dict = Gauges::instance();
         let warehouses_dict = Warehouses::instance();
+        let commissions_dict = Commissions::instance();
         for token_id in &token_ids {
             gauges_dict.remove(token_id);
             warehouses_dict.remove(token_id);
+            commissions_dict.remove(token_id);
         }
         Ok(())
     }
