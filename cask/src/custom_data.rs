@@ -84,4 +84,8 @@ impl Commissions {
     pub fn set(&self, key: &str, value: Commission) {
         self.dict.set(key, value);
     }
+
+    pub fn remove(&self, key: &str) {
+        self.dict.remove::<Commission>(key);
+    }
 }
