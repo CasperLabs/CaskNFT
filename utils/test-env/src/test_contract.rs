@@ -54,6 +54,14 @@ impl TestContract {
         value.into_t().unwrap()
     }
 
+    pub fn package_hash(&self) -> Hash {
+        let key = format!("{}_package_hash_wrapped", self.name);
+        let value: Value = self
+            .env
+            .query_account_named_key(self.contract_owner, &[key]);
+        value.into_t().unwrap()
+    }
+
     pub fn call_contract(&self, sender: Sender, entry_point: &str, session_args: RuntimeArgs) {
         let session_code = Code::Hash(self.contract_hash(), String::from(entry_point));
         self.env.run(sender, session_code, session_args);

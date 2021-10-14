@@ -25,8 +25,6 @@ They can be grouped into following topics:
 | owner_of | PublicKey | Key of the token owner |
 | get_token_by_index | String | Id of the indexed token that a user owns |
 | token_meta | Dict(String, String) | Metadata of each token |
-| token_gauge | Dict(String, String) | Gauge data for each token |
-| token_warehouse | Dict(String, String) | Warehouse data for each token |
 | token_commission | Dict(String, String) | Commission data for each token |
 
 ### Token Control
@@ -35,11 +33,10 @@ They can be grouped into following topics:
 | mint | Mint new tokens to the provided account (Only minters/admins) |
 | mint_copies | Mint new tokens with same data to the provided account (Only minters/admins) |
 | burn | Burn existing tokens from the provided account (Only minters/admins) |
-| transfer | Transfer tokens to an account (Only owners) |
-| transfer_from | Transfer tokens from an account to another one (Only owners/admins) |
-| update_token_meta | Set metadata of an existing token (Only minters/admins) |
-| update_token_gauge | Set gauge of an existing token (Only minters/admins) |
-| update_token_warehouse | Set warehouse of an existing token (Only minters/admins) |
+| transfer | Transfer tokens to an kyc'd account (Only owners) |
+| transfer_from | Transfer tokens from an account to another one (Only admins) |
+| set_token_meta | Set metadata of an existing token (Only minters/admins) |
+| update_token_meta | Update metadata of an existing token (Only minters/admins) |
 | update_token_commission | Set commission of an existing token (Only minters/admins) |
 
 ### Access Management

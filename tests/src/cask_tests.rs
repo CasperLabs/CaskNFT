@@ -2,7 +2,7 @@ use casper_engine_test_support::AccountHash;
 use casper_types::{Key, U256};
 use test_env::{Sender, TestEnv};
 
-use crate::cask_instance::{CaskInstance, Commission, Gauge, Meta, TokenId, Warehouse};
+use crate::cask_instance::{CaskInstance, CivicInstance, Commission, Meta, TokenId};
 
 const NAME: &str = "CaskNFT";
 const SYMBOL: &str = "CNFT";
@@ -25,36 +25,6 @@ mod meta {
         let mut meta = Meta::new();
         meta.insert("size".to_string(), "medium".to_string());
         meta
-    }
-}
-
-mod gauge {
-    use super::Gauge;
-    pub fn alchol_gauge() -> Gauge {
-        let mut gauge = Gauge::new();
-        gauge.insert("alchol_percentage".to_string(), "40".to_string());
-        gauge
-    }
-
-    pub fn phenol_gauge() -> Gauge {
-        let mut gauge = Gauge::new();
-        gauge.insert("phenol".to_string(), "yes".to_string());
-        gauge
-    }
-}
-
-mod warehouse {
-    use super::Warehouse;
-    pub fn west_warehouse() -> Warehouse {
-        let mut warehouse = Warehouse::new();
-        warehouse.insert("location".to_string(), "west".to_string());
-        warehouse
-    }
-
-    pub fn south_warehouse() -> Warehouse {
-        let mut warehouse = Warehouse::new();
-        warehouse.insert("location".to_string(), "south".to_string());
-        warehouse
     }
 }
 
@@ -81,24 +51,24 @@ mod commission {
     }
 }
 
-fn deploy() -> (TestEnv, CaskInstance, AccountHash) {
+fn deploy() -> (TestEnv, CivicInstance, CaskInstance, AccountHash) {
     let env = TestEnv::new();
     let owner = env.next_user();
-    let token = CaskInstance::new(
+    let (kyc_token, cask_token) = CaskInstance::new(
         &env,
         NAME,
         Sender(owner),
         NAME,
         SYMBOL,
         meta::contract_meta(),
-        owner,
+        Key::Account(owner),
     );
-    (env, token, owner)
+    (env, kyc_token, cask_token, owner)
 }
 
 #[test]
 fn test_deploy() {
-    let (_, token, owner) = deploy();
+    let (_, _, token, owner) = deploy();
     assert_eq!(token.name(), NAME);
     assert_eq!(token.symbol(), SYMBOL);
     assert_eq!(token.meta(), meta::contract_meta());
@@ -108,7 +78,7 @@ fn test_deploy() {
 
 #[test]
 fn test_grant_admin() {
-    let (env, token, owner) = deploy();
+    let (env, _, token, owner) = deploy();
     let user = env.next_user();
 
     token.grant_admin(Sender(owner), user);
@@ -117,7 +87,7 @@ fn test_grant_admin() {
 
 #[test]
 fn test_revoke_admin() {
-    let (env, token, owner) = deploy();
+    let (env, _, token, owner) = deploy();
     let user = env.next_user();
 
     token.grant_admin(Sender(owner), user);
@@ -129,7 +99,7 @@ fn test_revoke_admin() {
 
 #[test]
 fn test_grant_minter() {
-    let (env, token, owner) = deploy();
+    let (env, _, token, owner) = deploy();
     let alice = env.next_user();
     let bob = env.next_user();
 
@@ -140,7 +110,7 @@ fn test_grant_minter() {
 
 #[test]
 fn test_revoke_minter() {
-    let (env, token, owner) = deploy();
+    let (env, _, token, owner) = deploy();
     let alice = env.next_user();
     let bob = env.next_user();
 
@@ -154,13 +124,11 @@ fn test_revoke_minter() {
 
 #[test]
 fn test_mint_from_minter() {
-    let (env, token, owner) = deploy();
+    let (env, _, token, owner) = deploy();
     let ali = env.next_user();
     let bob = env.next_user();
     let token_id = TokenId::from("custom_token_id");
     let token_meta = meta::big_cask();
-    let token_gauge = gauge::alchol_gauge();
-    let token_warehouse = warehouse::west_warehouse();
     let token_commission = commission::commission(
         vec!["artist".to_string(), "broker".to_string()],
         vec![ali.into(), bob.into()],
@@ -174,19 +142,11 @@ fn test_mint_from_minter() {
         bob,
         Some(vec![token_id.clone()]),
         vec![token_meta.clone()],
-        vec![token_gauge.clone()],
-        vec![token_warehouse.clone()],
         vec![token_commission.clone()],
     );
 
     let user_token_meta = token.token_meta(token_id.clone());
     assert_eq!(user_token_meta.unwrap(), token_meta);
-
-    let user_token_gauge = token.token_gauge(token_id.clone());
-    assert_eq!(user_token_gauge.unwrap(), token_gauge);
-
-    let user_token_warehouse = token.token_warehouse(token_id.clone());
-    assert_eq!(user_token_warehouse.unwrap(), token_warehouse);
 
     let user_token_commission = token.token_commission(token_id.clone());
     assert_eq!(user_token_commission.unwrap(), token_commission);
@@ -198,39 +158,24 @@ fn test_mint_from_minter() {
 #[test]
 #[should_panic]
 fn test_mint_with_wrong_arguments() {
-    let (env, token, owner) = deploy();
+    let (env, _, token, owner) = deploy();
     let ali = env.next_user();
     let bob = env.next_user();
     let token_meta = meta::big_cask();
-    let token_commission = commission::commission(
-        vec!["artist".to_string(), "broker".to_string()],
-        vec![ali.into(), bob.into()],
-        vec!["10".to_string(), "12".to_string()],
-    );
 
     token.grant_minter(Sender(owner), ali);
 
-    token.mint(
-        Sender(ali),
-        bob,
-        None,
-        vec![token_meta],
-        vec![],
-        vec![],
-        vec![token_commission],
-    );
+    token.mint(Sender(ali), bob, None, vec![token_meta], vec![]);
 }
 
 #[test]
 #[should_panic]
 fn test_mint_from_non_minter() {
-    let (env, token, _) = deploy();
+    let (env, _, token, _) = deploy();
     let ali = env.next_user();
     let bob = env.next_user();
     let token_id = TokenId::from("custom_token_id");
     let token_meta = meta::big_cask();
-    let token_gauge = gauge::alchol_gauge();
-    let token_warehouse = warehouse::west_warehouse();
     let token_commission = commission::commission(
         vec!["artist".to_string(), "broker".to_string()],
         vec![ali.into(), bob.into()],
@@ -242,20 +187,16 @@ fn test_mint_from_non_minter() {
         bob,
         Some(vec![token_id]),
         vec![token_meta],
-        vec![token_gauge],
-        vec![token_warehouse],
         vec![token_commission],
     );
 }
 
 #[test]
 fn test_mint_copies_from_minter() {
-    let (env, token, owner) = deploy();
+    let (env, _, token, owner) = deploy();
     let ali = env.next_user();
     let bob = env.next_user();
     let token_meta = meta::big_cask();
-    let token_gauge = gauge::alchol_gauge();
-    let token_warehouse = warehouse::west_warehouse();
     let token_commission = commission::commission(
         vec!["artist".to_string(), "broker".to_string()],
         vec![ali.into(), bob.into()],
@@ -269,8 +210,6 @@ fn test_mint_copies_from_minter() {
         bob,
         None,
         token_meta.clone(),
-        token_gauge,
-        token_warehouse,
         token_commission,
         3,
     );
@@ -304,28 +243,17 @@ fn test_mint_copies_from_minter() {
 
 #[test]
 fn test_burn_from_minter() {
-    let (env, token, owner) = deploy();
+    let (env, _, token, owner) = deploy();
     let ali = env.next_user();
     let bob = env.next_user();
     let token_meta = meta::big_cask();
-    let token_gauge = gauge::alchol_gauge();
-    let token_warehouse = warehouse::west_warehouse();
     let token_commission = commission::commission(
         vec!["artist".to_string(), "broker".to_string()],
         vec![ali.into(), bob.into()],
         vec!["10".to_string(), "12".to_string()],
     );
 
-    token.mint_copies(
-        Sender(owner),
-        bob,
-        None,
-        token_meta,
-        token_gauge,
-        token_warehouse,
-        token_commission,
-        2,
-    );
+    token.mint_copies(Sender(owner), bob, None, token_meta, token_commission, 2);
 
     token.grant_minter(Sender(owner), ali);
 
@@ -344,57 +272,36 @@ fn test_burn_from_minter() {
 #[test]
 #[should_panic]
 fn test_burn_from_non_minter() {
-    let (env, token, owner) = deploy();
+    let (env, _, token, owner) = deploy();
     let ali = env.next_user();
     let bob = env.next_user();
     let token_meta = meta::big_cask();
-    let token_gauge = gauge::alchol_gauge();
-    let token_warehouse = warehouse::west_warehouse();
     let token_commission = commission::commission(
         vec!["artist".to_string(), "broker".to_string()],
         vec![ali.into(), bob.into()],
         vec!["10".to_string(), "12".to_string()],
     );
 
-    token.mint_copies(
-        Sender(owner),
-        bob,
-        None,
-        token_meta,
-        token_gauge,
-        token_warehouse,
-        token_commission,
-        2,
-    );
+    token.mint_copies(Sender(owner), bob, None, token_meta, token_commission, 2);
 
     let first_user_token = token.get_token_by_index(Key::Account(bob), U256::from(0));
     token.burn(Sender(ali), bob, vec![first_user_token.unwrap()]);
 }
 
 #[test]
+#[should_panic]
 fn test_transfer_from_owner() {
-    let (env, token, owner) = deploy();
+    let (env, _, token, owner) = deploy();
     let ali = env.next_user();
     let bob = env.next_user();
     let token_meta = meta::big_cask();
-    let token_gauge = gauge::alchol_gauge();
-    let token_warehouse = warehouse::west_warehouse();
     let token_commission = commission::commission(
         vec!["artist".to_string(), "broker".to_string()],
         vec![ali.into(), bob.into()],
         vec!["10".to_string(), "12".to_string()],
     );
 
-    token.mint_copies(
-        Sender(owner),
-        ali,
-        None,
-        token_meta,
-        token_gauge,
-        token_warehouse,
-        token_commission,
-        2,
-    );
+    token.mint_copies(Sender(owner), ali, None, token_meta, token_commission, 2);
     let first_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(0));
     let second_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(1));
 
@@ -409,53 +316,21 @@ fn test_transfer_from_owner() {
         Key::Account(ali)
     );
     token.transfer_from(Sender(ali), ali, bob, vec![first_ali_token.unwrap()]);
-    let new_first_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(0));
-    let new_second_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(1));
-    let new_first_bob_token = token.get_token_by_index(Key::Account(bob), U256::from(0));
-    let new_second_bob_token = token.get_token_by_index(Key::Account(bob), U256::from(1));
-    println!("{:?}", new_first_ali_token);
-    println!("{:?}", new_second_ali_token);
-    println!("{:?}", new_first_bob_token);
-    println!("{:?}", new_second_bob_token);
-    assert_eq!(token.total_supply(), U256::from(2));
-    assert_eq!(token.balance_of(Key::Account(ali)), U256::from(1));
-    assert_eq!(token.balance_of(Key::Account(bob)), U256::from(1));
-    assert_eq!(
-        token.owner_of(new_first_ali_token.unwrap()).unwrap(),
-        Key::Account(ali)
-    );
-    assert_eq!(
-        token.owner_of(new_first_bob_token.unwrap()).unwrap(),
-        Key::Account(bob)
-    );
-    assert_eq!(new_second_ali_token, None);
-    assert_eq!(new_second_bob_token, None);
 }
 
 #[test]
 fn test_transfer_from_admin() {
-    let (env, token, owner) = deploy();
+    let (env, _, token, owner) = deploy();
     let ali = env.next_user();
     let bob = env.next_user();
     let token_meta = meta::big_cask();
-    let token_gauge = gauge::alchol_gauge();
-    let token_warehouse = warehouse::west_warehouse();
     let token_commission = commission::commission(
         vec!["artist".to_string(), "broker".to_string()],
         vec![ali.into(), bob.into()],
         vec!["10".to_string(), "12".to_string()],
     );
 
-    token.mint_copies(
-        Sender(owner),
-        ali,
-        None,
-        token_meta,
-        token_gauge,
-        token_warehouse,
-        token_commission,
-        2,
-    );
+    token.mint_copies(Sender(owner), ali, None, token_meta, token_commission, 2);
     let first_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(0));
     let second_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(1));
 
@@ -496,28 +371,17 @@ fn test_transfer_from_admin() {
 #[test]
 #[should_panic]
 fn test_transfer_from_minter() {
-    let (env, token, owner) = deploy();
+    let (env, _, token, owner) = deploy();
     let ali = env.next_user();
     let bob = env.next_user();
     let token_meta = meta::big_cask();
-    let token_gauge = gauge::alchol_gauge();
-    let token_warehouse = warehouse::west_warehouse();
     let token_commission = commission::commission(
         vec!["artist".to_string(), "broker".to_string()],
         vec![ali.into(), bob.into()],
         vec!["10".to_string(), "12".to_string()],
     );
 
-    token.mint_copies(
-        Sender(owner),
-        ali,
-        None,
-        token_meta,
-        token_gauge,
-        token_warehouse,
-        token_commission,
-        2,
-    );
+    token.mint_copies(Sender(owner), ali, None, token_meta, token_commission, 2);
     let first_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(0));
     let second_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(1));
 
@@ -537,28 +401,19 @@ fn test_transfer_from_minter() {
 
 #[test]
 fn test_transfer() {
-    let (env, token, owner) = deploy();
+    let (env, kyc, token, owner) = deploy();
     let ali = env.next_user();
     let bob = env.next_user();
     let token_meta = meta::big_cask();
-    let token_gauge = gauge::alchol_gauge();
-    let token_warehouse = warehouse::west_warehouse();
+    let mut kyc_token_meta = Meta::new();
+    kyc_token_meta.insert("status".to_string(), "active".to_string());
     let token_commission = commission::commission(
         vec!["artist".to_string(), "broker".to_string()],
         vec![ali.into(), bob.into()],
         vec!["10".to_string(), "12".to_string()],
     );
 
-    token.mint_copies(
-        Sender(owner),
-        ali,
-        None,
-        token_meta,
-        token_gauge,
-        token_warehouse,
-        token_commission,
-        2,
-    );
+    token.mint_copies(Sender(owner), ali, None, token_meta, token_commission, 2);
     let first_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(0));
     let second_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(1));
 
@@ -572,6 +427,7 @@ fn test_transfer() {
         token.owner_of(second_ali_token.unwrap()).unwrap(),
         Key::Account(ali)
     );
+    kyc.mint(Sender(owner), bob, None, kyc_token_meta);
     token.transfer(Sender(ali), bob, vec![first_ali_token.unwrap()]);
     let new_first_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(0));
     let new_second_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(1));
@@ -598,13 +454,11 @@ fn test_transfer() {
 
 #[test]
 fn test_token_meta() {
-    let (env, token, owner) = deploy();
+    let (env, _, token, owner) = deploy();
     let ali = env.next_user();
     let bob = env.next_user();
     let token_id = TokenId::from("123456");
     let token_meta = meta::big_cask();
-    let token_gauge = gauge::alchol_gauge();
-    let token_warehouse = warehouse::west_warehouse();
     let token_commission = commission::commission(
         vec!["artist".to_string(), "broker".to_string()],
         vec![ali.into(), bob.into()],
@@ -616,20 +470,12 @@ fn test_token_meta() {
         ali,
         Some(vec![token_id.clone()]),
         token_meta.clone(),
-        token_gauge.clone(),
-        token_warehouse.clone(),
         token_commission.clone(),
         1,
     );
 
     let user_token_meta = token.token_meta(token_id.clone());
     assert_eq!(user_token_meta.unwrap(), token_meta);
-
-    let user_token_gauge = token.token_gauge(token_id.clone());
-    assert_eq!(user_token_gauge.unwrap(), token_gauge);
-
-    let user_token_warehouse = token.token_warehouse(token_id.clone());
-    assert_eq!(user_token_warehouse.unwrap(), token_warehouse);
 
     let user_token_commission = token.token_commission(token_id.clone());
     assert_eq!(user_token_commission.unwrap(), token_commission);
@@ -639,14 +485,12 @@ fn test_token_meta() {
 }
 
 #[test]
-fn test_token_metadata_update_from_minter() {
-    let (env, token, owner) = deploy();
+fn test_token_metadata_set_from_minter() {
+    let (env, _, token, owner) = deploy();
     let ali = env.next_user();
     let bob = env.next_user();
     let token_id = TokenId::from("123456");
     let token_meta = meta::big_cask();
-    let token_gauge = gauge::alchol_gauge();
-    let token_warehouse = warehouse::west_warehouse();
     let token_commission = commission::commission(
         vec!["artist".to_string(), "broker".to_string()],
         vec![ali.into(), bob.into()],
@@ -658,28 +502,28 @@ fn test_token_metadata_update_from_minter() {
         ali,
         Some(vec![token_id.clone()]),
         token_meta,
-        token_gauge,
-        token_warehouse,
         token_commission,
         1,
     );
     token.grant_minter(Sender(owner), ali);
-    token.update_token_meta(Sender(ali), token_id.clone(), meta::medium_cask());
-    token.update_token_gauge(Sender(ali), token_id.clone(), gauge::phenol_gauge());
-    token.update_token_warehouse(Sender(ali), token_id.clone(), warehouse::south_warehouse());
-    assert_eq!(token.token_meta(token_id).unwrap(), meta::medium_cask());
+    token.set_token_meta(Sender(ali), token_id.clone(), meta::medium_cask());
+    token.update_token_meta(
+        Sender(ali),
+        token_id.clone(),
+        "size".to_string(),
+        "big".to_string(),
+    );
+    assert_eq!(token.token_meta(token_id).unwrap(), meta::big_cask());
 }
 
 #[test]
 #[should_panic]
-fn test_token_metadata_update_from_owner() {
-    let (env, token, owner) = deploy();
+fn test_token_metadata_set_from_owner() {
+    let (env, _, token, owner) = deploy();
     let ali = env.next_user();
     let bob = env.next_user();
     let token_id = TokenId::from("123456");
     let token_meta = meta::big_cask();
-    let token_gauge = gauge::alchol_gauge();
-    let token_warehouse = warehouse::west_warehouse();
     let token_commission = commission::commission(
         vec!["artist".to_string(), "broker".to_string()],
         vec![ali.into(), bob.into()],
@@ -691,23 +535,19 @@ fn test_token_metadata_update_from_owner() {
         ali,
         Some(vec![token_id.clone()]),
         token_meta,
-        token_gauge,
-        token_warehouse,
         token_commission,
         1,
     );
-    token.update_token_meta(Sender(ali), token_id, meta::medium_cask());
+    token.set_token_meta(Sender(ali), token_id, meta::medium_cask());
 }
 
 #[test]
 fn test_token_commission_update_from_admin() {
-    let (env, token, owner) = deploy();
+    let (env, _, token, owner) = deploy();
     let ali = env.next_user();
     let bob = env.next_user();
     let token_id = TokenId::from("123456");
     let token_meta = meta::big_cask();
-    let token_gauge = gauge::alchol_gauge();
-    let token_warehouse = warehouse::west_warehouse();
     let token_commission = commission::commission(
         vec!["artist".to_string()],
         vec![ali.into()],
@@ -719,8 +559,6 @@ fn test_token_commission_update_from_admin() {
         ali,
         Some(vec![token_id.clone()]),
         token_meta,
-        token_gauge,
-        token_warehouse,
         token_commission,
         1,
     );
@@ -780,13 +618,11 @@ fn test_token_commission_update_from_admin() {
 #[test]
 #[should_panic]
 fn test_token_commission_update_from_minter() {
-    let (env, token, owner) = deploy();
+    let (env, _, token, owner) = deploy();
     let ali = env.next_user();
     let bob = env.next_user();
     let token_id = TokenId::from("123456");
     let token_meta = meta::big_cask();
-    let token_gauge = gauge::alchol_gauge();
-    let token_warehouse = warehouse::west_warehouse();
     let token_commission = commission::commission(
         vec!["artist".to_string()],
         vec![ali.into()],
@@ -798,8 +634,6 @@ fn test_token_commission_update_from_minter() {
         ali,
         Some(vec![token_id.clone()]),
         token_meta,
-        token_gauge,
-        token_warehouse,
         token_commission,
         1,
     );
@@ -817,12 +651,10 @@ fn test_token_commission_update_from_minter() {
 #[test]
 #[should_panic]
 fn test_token_commission_update_from_owner() {
-    let (env, token, owner) = deploy();
+    let (env, _, token, owner) = deploy();
     let ali = env.next_user();
     let token_id = TokenId::from("123456");
     let token_meta = meta::big_cask();
-    let token_gauge = gauge::alchol_gauge();
-    let token_warehouse = warehouse::west_warehouse();
     let token_commission = commission::commission(
         vec!["artist".to_string()],
         vec![ali.into()],
@@ -834,8 +666,6 @@ fn test_token_commission_update_from_owner() {
         ali,
         Some(vec![token_id.clone()]),
         token_meta,
-        token_gauge,
-        token_warehouse,
         token_commission,
         1,
     );

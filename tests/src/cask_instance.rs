@@ -10,34 +10,51 @@ use test_env::{Sender, TestContract, TestEnv};
 
 pub type TokenId = String;
 pub type Meta = BTreeMap<String, String>;
-pub type Gauge = BTreeMap<String, String>;
-pub type Warehouse = BTreeMap<String, String>;
 pub type Commission = BTreeMap<String, String>;
 
 pub struct CaskInstance(TestContract);
+pub struct CivicInstance(TestContract);
 
 impl CaskInstance {
-    pub fn new<T: Into<Key>>(
+    pub fn new(
         env: &TestEnv,
         contract_name: &str,
         sender: Sender,
         name: &str,
         symbol: &str,
         meta: Meta,
-        admin: T,
-    ) -> CaskInstance {
-        CaskInstance(TestContract::new(
+        admin: Key,
+    ) -> (CivicInstance, CaskInstance) {
+        let Sender(owner) = sender;
+        let civic_instance = CivicInstance(TestContract::new(
             env,
-            "cask-token.wasm",
-            contract_name,
-            sender,
+            "civic-token.wasm",
+            "kyc",
+            Sender(owner),
             runtime_args! {
-                "name" => name,
-                "symbol" => symbol,
-                "meta" => meta,
-                "admin" => admin.into(),
+                "name" => "kyc",
+                "symbol" => "symbol",
+                "meta" => meta.clone(),
+                "admin" => admin
             },
-        ))
+        ));
+        let civic_package_hash = civic_instance.0.package_hash();
+        (
+            civic_instance,
+            CaskInstance(TestContract::new(
+                env,
+                "cask-token.wasm",
+                contract_name,
+                Sender(owner),
+                runtime_args! {
+                    "name" => name,
+                    "symbol" => symbol,
+                    "meta" => meta,
+                    "admin" => admin,
+                    "kyc_package_hash" => Key::Hash(civic_package_hash)
+                },
+            )),
+        )
     }
 
     pub fn constructor(&self, sender: Sender, name: &str, symbol: &str, meta: Meta) {
@@ -93,8 +110,6 @@ impl CaskInstance {
         recipient: T,
         token_ids: Option<Vec<TokenId>>,
         token_metas: Vec<Meta>,
-        token_gauges: Vec<Gauge>,
-        token_warehouses: Vec<Warehouse>,
         token_commissions: Vec<Commission>,
     ) {
         self.0.call_contract(
@@ -104,8 +119,6 @@ impl CaskInstance {
                 "recipient" => recipient.into(),
                 "token_ids" => token_ids,
                 "token_metas" => token_metas,
-                "token_gauges" => token_gauges,
-                "token_warehouses" => token_warehouses,
                 "token_commissions" => token_commissions
             },
         )
@@ -117,8 +130,6 @@ impl CaskInstance {
         recipient: T,
         token_ids: Option<Vec<TokenId>>,
         token_meta: Meta,
-        token_gauge: Gauge,
-        token_warehouse: Warehouse,
         token_commission: Commission,
         count: u32,
     ) {
@@ -129,8 +140,6 @@ impl CaskInstance {
                 "recipient" => recipient.into(),
                 "token_ids" => token_ids,
                 "token_meta" => token_meta,
-                "token_gauge" => token_gauge,
-                "token_warehouse" => token_warehouse,
                 "token_commission" => token_commission,
                 "count" => count
             },
@@ -166,10 +175,10 @@ impl CaskInstance {
         )
     }
 
-    pub fn update_token_meta(&self, sender: Sender, token_id: TokenId, token_meta: Meta) {
+    pub fn set_token_meta(&self, sender: Sender, token_id: TokenId, token_meta: Meta) {
         self.0.call_contract(
             sender,
-            "update_token_meta",
+            "set_token_meta",
             runtime_args! {
                 "token_id" => token_id,
                 "token_meta" => token_meta
@@ -177,29 +186,20 @@ impl CaskInstance {
         )
     }
 
-    pub fn update_token_gauge(&self, sender: Sender, token_id: TokenId, token_gauge: Gauge) {
-        self.0.call_contract(
-            sender,
-            "update_token_gauge",
-            runtime_args! {
-                "token_id" => token_id,
-                "token_gauge" => token_gauge
-            },
-        )
-    }
-
-    pub fn update_token_warehouse(
+    pub fn update_token_meta(
         &self,
         sender: Sender,
         token_id: TokenId,
-        token_warehouse: Warehouse,
+        token_meta_key: String,
+        token_meta_value: String,
     ) {
         self.0.call_contract(
             sender,
-            "update_token_warehouse",
+            "update_token_meta",
             runtime_args! {
                 "token_id" => token_id,
-                "token_warehouse" => token_warehouse
+                "token_meta_key" => token_meta_key,
+                "token_meta_value" => token_meta_value
             },
         )
     }
@@ -253,14 +253,6 @@ impl CaskInstance {
         self.0.query_dictionary("metadata", token_id)
     }
 
-    pub fn token_gauge(&self, token_id: TokenId) -> Option<Gauge> {
-        self.0.query_dictionary("gauges", token_id)
-    }
-
-    pub fn token_warehouse(&self, token_id: TokenId) -> Option<Warehouse> {
-        self.0.query_dictionary("warehouses", token_id)
-    }
-
     pub fn token_commission(&self, token_id: TokenId) -> Option<Commission> {
         self.0.query_dictionary("commissions", token_id)
     }
@@ -294,8 +286,32 @@ impl CaskInstance {
         self.0.query_named_key(String::from("total_supply"))
     }
 
+    pub fn kyc_hash(&self) -> Key {
+        self.0.query_named_key(String::from("kyc_package_hash"))
+    }
+
     pub fn meta(&self) -> Meta {
         self.0.query_named_key(String::from("meta"))
+    }
+}
+
+impl CivicInstance {
+    pub fn mint<T: Into<Key>>(
+        &self,
+        sender: Sender,
+        recipient: T,
+        token_id: Option<TokenId>,
+        token_meta: Meta,
+    ) {
+        self.0.call_contract(
+            sender,
+            "mint",
+            runtime_args! {
+                "recipient" => recipient.into(),
+                "token_id" => token_id,
+                "token_meta" => token_meta
+            },
+        )
     }
 }
 
