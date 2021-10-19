@@ -62,3 +62,4 @@ make build-contracts
 ```
 make test
 ```
+As the CaskNFT contract interacts with other contracts, you will need to have the KYC Contract - **"civic.wasm"** located in `tests/wasm` folder to test successfully.
