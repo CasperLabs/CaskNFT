@@ -26,4 +26,4 @@ lint: clippy format
 	
 clean:
 	cargo clean
-	rm -rf tests/wasm/*.wasm
+	rm -rf tests/wasm/cask-token.wasm
