@@ -91,6 +91,34 @@ impl CaskCollectibleToken {
         Ok(confirmed_token_ids)
     }
 
+
+    fn mint_copies(
+        &mut self,
+        recipient: Key,
+        token_ids: Option<Vec<TokenId>>,
+        token_meta: Meta,
+        token_commission: Commission,
+        count: u32,
+    ) -> Result<Vec<TokenId>, Error> {
+        let caller = CaskCollectibleToken::default().get_caller();
+        if !CaskCollectibleToken::default().is_admin(caller) {
+            revert(ApiError::User(20));
+        }
+        if let Some(token_ids) = &token_ids {
+            if token_ids.len() != count as usize {
+                return Err(Error::WrongArguments);
+            }
+        }
+        let token_metas = vec![token_meta; count as usize];
+        let token_commissions = vec![token_commission; count as usize];
+        self.mint(
+            recipient,
+            token_ids,
+            token_metas,
+            token_commissions,
+        )
+    }
+
     fn burn(&mut self, owner: Key, token_ids: Vec<TokenId>) -> Result<(), Error> {
         CEP47::burn_internal(self, owner, token_ids.clone()).unwrap_or_revert();
 
@@ -184,6 +212,24 @@ fn mint() {
             token_ids,
             token_metas,
             token_commissions,
+        )
+        .unwrap_or_revert();
+}
+
+#[no_mangle]
+fn mint_copies() {
+    let recipient = runtime::get_named_arg::<Key>("recipient");
+    let token_ids = runtime::get_named_arg::<Option<Vec<TokenId>>>("token_ids");
+    let token_meta = runtime::get_named_arg::<Meta>("token_meta");
+    let token_commission = runtime::get_named_arg::<Commission>("token_commission");
+    let count = runtime::get_named_arg::<u32>("count");
+    CaskCollectibleToken::default()
+        .mint_copies(
+            recipient,
+            token_ids,
+            token_meta,
+            token_commission,
+            count,
         )
         .unwrap_or_revert();
 }
@@ -411,6 +457,10 @@ fn get_entry_points() -> EntryPoints {
                 CLType::Option(Box::new(CLType::List(Box::new(TokenId::cl_type())))),
             ),
             Parameter::new("token_meta", Meta::cl_type()),
+            Parameter::new(
+                "token_commissions",
+                CLType::List(Box::new(Commission::cl_type())),
+            ),
             Parameter::new("count", CLType::U32),
         ],
         <()>::cl_type(),
@@ -444,20 +494,6 @@ fn get_entry_points() -> EntryPoints {
             Parameter::new("recipient", Key::cl_type()),
             Parameter::new("token_ids", CLType::List(Box::new(TokenId::cl_type()))),
         ],
-        <()>::cl_type(),
-        EntryPointAccess::Public,
-        EntryPointType::Contract,
-    ));
-    entry_points.add_entry_point(EntryPoint::new(
-        "grant_minter",
-        vec![Parameter::new("minter", Key::cl_type())],
-        <()>::cl_type(),
-        EntryPointAccess::Public,
-        EntryPointType::Contract,
-    ));
-    entry_points.add_entry_point(EntryPoint::new(
-        "revoke_minter",
-        vec![Parameter::new("minter", Key::cl_type())],
         <()>::cl_type(),
         EntryPointAccess::Public,
         EntryPointType::Contract,

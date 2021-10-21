@@ -12,9 +12,9 @@ pub type TokenId = String;
 pub type Meta = BTreeMap<String, String>;
 pub type Commission = BTreeMap<String, String>;
 
-pub struct CaskInstance(TestContract);
+pub struct CaskCollectibleInstance(TestContract);
 
-impl CaskInstance {
+impl CaskCollectibleInstance {
     pub fn new<T: Into<Key>>(
         env: &TestEnv,
         contract_name: &str,
@@ -23,10 +23,10 @@ impl CaskInstance {
         symbol: &str,
         meta: Meta,
         admin: T,
-    ) -> CaskInstance {
-        CaskInstance(TestContract::new(
+    ) -> CaskCollectibleInstance {
+        CaskCollectibleInstance(TestContract::new(
             env,
-            "cask-token.wasm",
+            "cask-collectible-token.wasm",
             contract_name,
             sender,
             runtime_args! {
@@ -64,24 +64,6 @@ impl CaskInstance {
             "revoke_admin",
             runtime_args! {
             "admin" => admin.into()},
-        );
-    }
-
-    pub fn grant_minter<T: Into<Key>>(&self, sender: Sender, minter: T) {
-        self.0.call_contract(
-            sender,
-            "grant_minter",
-            runtime_args! {
-            "minter" => minter.into()},
-        );
-    }
-
-    pub fn revoke_minter<T: Into<Key>>(&self, sender: Sender, minter: T) {
-        self.0.call_contract(
-            sender,
-            "revoke_minter",
-            runtime_args! {
-            "minter" => minter.into()},
         );
     }
 
@@ -156,39 +138,6 @@ impl CaskInstance {
         )
     }
 
-    pub fn update_token_meta(&self, sender: Sender, token_id: TokenId, token_meta: Meta) {
-        self.0.call_contract(
-            sender,
-            "update_token_meta",
-            runtime_args! {
-                "token_id" => token_id,
-                "token_meta" => token_meta
-            },
-        )
-    }
-
-    pub fn update_token_commission<T: Into<Key>>(
-        &self,
-        sender: Sender,
-        token_id: TokenId,
-        property: String,
-        account: T,
-        mode: String,
-        value: String,
-    ) {
-        self.0.call_contract(
-            sender,
-            "update_token_commission",
-            runtime_args! {
-                "token_id" => token_id,
-                "property" => property,
-                "account" => account.into(),
-                "mode" => mode,
-                "value" => value
-            },
-        )
-    }
-
     pub fn burn<T: Into<Key>>(&self, sender: Sender, owner: T, token_ids: Vec<TokenId>) {
         self.0.call_contract(
             sender,
@@ -203,12 +152,6 @@ impl CaskInstance {
     pub fn is_admin<T: Into<Key>>(&self, account: T) -> bool {
         self.0
             .query_dictionary::<()>("admins", key_to_str(&account.into()))
-            .is_some()
-    }
-
-    pub fn is_minter<T: Into<Key>>(&self, account: T) -> bool {
-        self.0
-            .query_dictionary::<()>("minters", key_to_str(&account.into()))
             .is_some()
     }
 
