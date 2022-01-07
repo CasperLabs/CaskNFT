@@ -9,19 +9,19 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use cep47::{
-    contract_utils::{AdminControl, ContractContext, OnChainContractStorage},
-    Error, Meta, TokenId, CEP47,
-};
-use contract::{
+use casper_contract::{
     contract_api::{
         runtime::{self, revert},
         storage,
     },
     unwrap_or_revert::UnwrapOrRevert,
 };
+use cep47::{
+    contract_utils::{AdminControl, ContractContext, OnChainContractStorage},
+    Error, Meta, TokenId, CEP47,
+};
 
-use types::{
+use casper_types::{
     contracts::NamedKeys, runtime_args, ApiError, CLType, CLTyped, CLValue, ContractPackageHash,
     EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Group, Key, Parameter, RuntimeArgs,
     URef, U256,
