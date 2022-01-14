@@ -5,8 +5,10 @@ use blake2::{
     digest::{Update, VariableOutput},
     VarBlake2b,
 };
-use casper_types::{bytesrepr::ToBytes, runtime_args, CLTyped, Key, RuntimeArgs, U256};
-use test_env::{Sender, TestContract, TestEnv};
+use casper_types::{
+    account::AccountHash, bytesrepr::ToBytes, runtime_args, CLTyped, Key, RuntimeArgs, U256,
+};
+use test_env::{TestContract, TestEnv};
 
 pub type TokenId = String;
 pub type Meta = BTreeMap<String, String>;
@@ -19,18 +21,18 @@ impl CaskInstance {
     pub fn new(
         env: &TestEnv,
         contract_name: &str,
-        sender: Sender,
+        sender: AccountHash,
         name: &str,
         symbol: &str,
         meta: Meta,
         admin: Key,
     ) -> (CivicInstance, CaskInstance) {
-        let Sender(owner) = sender;
+        let owner = sender;
         let civic_instance = CivicInstance(TestContract::new(
             env,
             "civic-token.wasm",
             "kyc",
-            Sender(owner),
+            owner,
             runtime_args! {
                 "name" => "kyc",
                 "symbol" => "symbol",
@@ -45,7 +47,7 @@ impl CaskInstance {
                 env,
                 "cask-token.wasm",
                 contract_name,
-                Sender(owner),
+                owner,
                 runtime_args! {
                     "name" => name,
                     "symbol" => symbol,
@@ -57,7 +59,7 @@ impl CaskInstance {
         )
     }
 
-    pub fn constructor(&self, sender: Sender, name: &str, symbol: &str, meta: Meta) {
+    pub fn constructor(&self, sender: AccountHash, name: &str, symbol: &str, meta: Meta) {
         self.0.call_contract(
             sender,
             "constructor",
@@ -68,7 +70,7 @@ impl CaskInstance {
         );
     }
 
-    pub fn grant_admin<T: Into<Key>>(&self, sender: Sender, admin: T) {
+    pub fn grant_admin<T: Into<Key>>(&self, sender: AccountHash, admin: T) {
         self.0.call_contract(
             sender,
             "grant_admin",
@@ -77,7 +79,7 @@ impl CaskInstance {
         );
     }
 
-    pub fn revoke_admin<T: Into<Key>>(&self, sender: Sender, admin: T) {
+    pub fn revoke_admin<T: Into<Key>>(&self, sender: AccountHash, admin: T) {
         self.0.call_contract(
             sender,
             "revoke_admin",
@@ -86,7 +88,7 @@ impl CaskInstance {
         );
     }
 
-    pub fn grant_minter<T: Into<Key>>(&self, sender: Sender, minter: T) {
+    pub fn grant_minter<T: Into<Key>>(&self, sender: AccountHash, minter: T) {
         self.0.call_contract(
             sender,
             "grant_minter",
@@ -95,7 +97,7 @@ impl CaskInstance {
         );
     }
 
-    pub fn revoke_minter<T: Into<Key>>(&self, sender: Sender, minter: T) {
+    pub fn revoke_minter<T: Into<Key>>(&self, sender: AccountHash, minter: T) {
         self.0.call_contract(
             sender,
             "revoke_minter",
@@ -106,7 +108,7 @@ impl CaskInstance {
 
     pub fn mint<T: Into<Key>>(
         &self,
-        sender: Sender,
+        sender: AccountHash,
         recipient: T,
         token_ids: Option<Vec<TokenId>>,
         token_metas: Vec<Meta>,
@@ -126,7 +128,7 @@ impl CaskInstance {
 
     pub fn mint_copies<T: Into<Key>>(
         &self,
-        sender: Sender,
+        sender: AccountHash,
         recipient: T,
         token_ids: Option<Vec<TokenId>>,
         token_meta: Meta,
@@ -146,7 +148,12 @@ impl CaskInstance {
         )
     }
 
-    pub fn transfer<T: Into<Key>>(&self, sender: Sender, recipient: T, token_ids: Vec<TokenId>) {
+    pub fn transfer<T: Into<Key>>(
+        &self,
+        sender: AccountHash,
+        recipient: T,
+        token_ids: Vec<TokenId>,
+    ) {
         self.0.call_contract(
             sender,
             "transfer",
@@ -159,7 +166,7 @@ impl CaskInstance {
 
     pub fn transfer_from<T: Into<Key>>(
         &self,
-        sender: Sender,
+        sender: AccountHash,
         owner: T,
         recipient: T,
         token_ids: Vec<TokenId>,
@@ -175,7 +182,7 @@ impl CaskInstance {
         )
     }
 
-    pub fn set_token_meta(&self, sender: Sender, token_id: TokenId, token_meta: Meta) {
+    pub fn set_token_meta(&self, sender: AccountHash, token_id: TokenId, token_meta: Meta) {
         self.0.call_contract(
             sender,
             "set_token_meta",
@@ -188,7 +195,7 @@ impl CaskInstance {
 
     pub fn update_token_meta(
         &self,
-        sender: Sender,
+        sender: AccountHash,
         token_id: TokenId,
         token_meta_key: String,
         token_meta_value: String,
@@ -206,7 +213,7 @@ impl CaskInstance {
 
     pub fn update_token_commission<T: Into<Key>>(
         &self,
-        sender: Sender,
+        sender: AccountHash,
         token_id: TokenId,
         property: String,
         account: T,
@@ -226,7 +233,7 @@ impl CaskInstance {
         )
     }
 
-    pub fn burn<T: Into<Key>>(&self, sender: Sender, owner: T, token_ids: Vec<TokenId>) {
+    pub fn burn<T: Into<Key>>(&self, sender: AccountHash, owner: T, token_ids: Vec<TokenId>) {
         self.0.call_contract(
             sender,
             "burn",
@@ -298,7 +305,7 @@ impl CaskInstance {
 impl CivicInstance {
     pub fn mint<T: Into<Key>>(
         &self,
-        sender: Sender,
+        sender: AccountHash,
         recipient: T,
         token_id: Option<TokenId>,
         token_meta: Meta,

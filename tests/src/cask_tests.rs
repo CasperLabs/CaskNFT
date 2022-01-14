@@ -1,6 +1,5 @@
-use casper_engine_test_support::AccountHash;
-use casper_types::{Key, U256};
-use test_env::{Sender, TestEnv};
+use casper_types::{account::AccountHash, Key, U256};
+use test_env::TestEnv;
 
 use crate::cask_instance::{CaskInstance, CivicInstance, Commission, Meta, TokenId};
 
@@ -57,7 +56,7 @@ fn deploy() -> (TestEnv, CivicInstance, CaskInstance, AccountHash) {
     let (kyc_token, cask_token) = CaskInstance::new(
         &env,
         NAME,
-        Sender(owner),
+        owner,
         NAME,
         SYMBOL,
         meta::contract_meta(),
@@ -81,7 +80,7 @@ fn test_grant_admin() {
     let (env, _, token, owner) = deploy();
     let user = env.next_user();
 
-    token.grant_admin(Sender(owner), user);
+    token.grant_admin(owner, user);
     assert!(token.is_admin(user));
 }
 
@@ -90,10 +89,10 @@ fn test_revoke_admin() {
     let (env, _, token, owner) = deploy();
     let user = env.next_user();
 
-    token.grant_admin(Sender(owner), user);
+    token.grant_admin(owner, user);
     assert!(token.is_admin(user));
 
-    token.revoke_admin(Sender(owner), user);
+    token.revoke_admin(owner, user);
     assert!(!token.is_admin(user));
 }
 
@@ -103,8 +102,8 @@ fn test_grant_minter() {
     let alice = env.next_user();
     let bob = env.next_user();
 
-    token.grant_admin(Sender(owner), alice);
-    token.grant_minter(Sender(alice), bob);
+    token.grant_admin(owner, alice);
+    token.grant_minter(alice, bob);
     assert!(token.is_minter(bob));
 }
 
@@ -114,11 +113,11 @@ fn test_revoke_minter() {
     let alice = env.next_user();
     let bob = env.next_user();
 
-    token.grant_minter(Sender(owner), bob);
+    token.grant_minter(owner, bob);
     assert!(token.is_minter(bob));
 
-    token.grant_admin(Sender(owner), alice);
-    token.revoke_minter(Sender(alice), bob);
+    token.grant_admin(owner, alice);
+    token.revoke_minter(alice, bob);
     assert!(!token.is_minter(bob));
 }
 
@@ -135,10 +134,10 @@ fn test_mint_from_minter() {
         vec!["10".to_string(), "12".to_string()],
     );
 
-    token.grant_minter(Sender(owner), ali);
+    token.grant_minter(owner, ali);
 
     token.mint(
-        Sender(ali),
+        ali,
         bob,
         Some(vec![token_id.clone()]),
         vec![token_meta.clone()],
@@ -163,9 +162,9 @@ fn test_mint_with_wrong_arguments() {
     let bob = env.next_user();
     let token_meta = meta::big_cask();
 
-    token.grant_minter(Sender(owner), ali);
+    token.grant_minter(owner, ali);
 
-    token.mint(Sender(ali), bob, None, vec![token_meta], vec![]);
+    token.mint(ali, bob, None, vec![token_meta], vec![]);
 }
 
 #[test]
@@ -183,7 +182,7 @@ fn test_mint_from_non_minter() {
     );
 
     token.mint(
-        Sender(ali),
+        ali,
         bob,
         Some(vec![token_id]),
         vec![token_meta],
@@ -203,16 +202,9 @@ fn test_mint_copies_from_minter() {
         vec!["10".to_string(), "12".to_string()],
     );
 
-    token.grant_minter(Sender(owner), ali);
+    token.grant_minter(owner, ali);
 
-    token.mint_copies(
-        Sender(ali),
-        bob,
-        None,
-        token_meta.clone(),
-        token_commission,
-        3,
-    );
+    token.mint_copies(ali, bob, None, token_meta.clone(), token_commission, 3);
 
     let first_user_token = token.get_token_by_index(Key::Account(bob), U256::from(0));
     let second_user_token = token.get_token_by_index(Key::Account(bob), U256::from(1));
@@ -253,13 +245,13 @@ fn test_burn_from_minter() {
         vec!["10".to_string(), "12".to_string()],
     );
 
-    token.mint_copies(Sender(owner), bob, None, token_meta, token_commission, 2);
+    token.mint_copies(owner, bob, None, token_meta, token_commission, 2);
 
-    token.grant_minter(Sender(owner), ali);
+    token.grant_minter(owner, ali);
 
     let first_user_token = token.get_token_by_index(Key::Account(bob), U256::from(0));
     let second_user_token = token.get_token_by_index(Key::Account(bob), U256::from(1));
-    token.burn(Sender(ali), bob, vec![first_user_token.unwrap()]);
+    token.burn(ali, bob, vec![first_user_token.unwrap()]);
     assert_eq!(token.total_supply(), U256::from(1));
     assert_eq!(token.balance_of(Key::Account(bob)), U256::from(1));
 
@@ -270,7 +262,7 @@ fn test_burn_from_minter() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic = "User(20)"]
 fn test_burn_from_non_minter() {
     let (env, _, token, owner) = deploy();
     let ali = env.next_user();
@@ -282,10 +274,10 @@ fn test_burn_from_non_minter() {
         vec!["10".to_string(), "12".to_string()],
     );
 
-    token.mint_copies(Sender(owner), bob, None, token_meta, token_commission, 2);
+    token.mint_copies(owner, bob, None, token_meta, token_commission, 2);
 
     let first_user_token = token.get_token_by_index(Key::Account(bob), U256::from(0));
-    token.burn(Sender(ali), bob, vec![first_user_token.unwrap()]);
+    token.burn(ali, bob, vec![first_user_token.unwrap()]);
 }
 
 #[test]
@@ -301,7 +293,7 @@ fn test_transfer_from_owner() {
         vec!["10".to_string(), "12".to_string()],
     );
 
-    token.mint_copies(Sender(owner), ali, None, token_meta, token_commission, 2);
+    token.mint_copies(owner, ali, None, token_meta, token_commission, 2);
     let first_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(0));
     let second_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(1));
 
@@ -315,7 +307,7 @@ fn test_transfer_from_owner() {
         token.owner_of(second_ali_token.unwrap()).unwrap(),
         Key::Account(ali)
     );
-    token.transfer_from(Sender(ali), ali, bob, vec![first_ali_token.unwrap()]);
+    token.transfer_from(ali, ali, bob, vec![first_ali_token.unwrap()]);
 }
 
 #[test]
@@ -330,7 +322,7 @@ fn test_transfer_from_admin() {
         vec!["10".to_string(), "12".to_string()],
     );
 
-    token.mint_copies(Sender(owner), ali, None, token_meta, token_commission, 2);
+    token.mint_copies(owner, ali, None, token_meta, token_commission, 2);
     let first_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(0));
     let second_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(1));
 
@@ -344,7 +336,7 @@ fn test_transfer_from_admin() {
         token.owner_of(second_ali_token.unwrap()).unwrap(),
         Key::Account(ali)
     );
-    token.transfer_from(Sender(owner), ali, bob, vec![first_ali_token.unwrap()]);
+    token.transfer_from(owner, ali, bob, vec![first_ali_token.unwrap()]);
     let new_first_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(0));
     let new_second_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(1));
     let new_first_bob_token = token.get_token_by_index(Key::Account(bob), U256::from(0));
@@ -381,7 +373,7 @@ fn test_transfer_from_minter() {
         vec!["10".to_string(), "12".to_string()],
     );
 
-    token.mint_copies(Sender(owner), ali, None, token_meta, token_commission, 2);
+    token.mint_copies(owner, ali, None, token_meta, token_commission, 2);
     let first_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(0));
     let second_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(1));
 
@@ -395,8 +387,8 @@ fn test_transfer_from_minter() {
         token.owner_of(second_ali_token.unwrap()).unwrap(),
         Key::Account(ali)
     );
-    token.grant_minter(Sender(owner), bob);
-    token.transfer_from(Sender(bob), ali, bob, vec![first_ali_token.unwrap()]);
+    token.grant_minter(owner, bob);
+    token.transfer_from(bob, ali, bob, vec![first_ali_token.unwrap()]);
 }
 
 #[test]
@@ -413,7 +405,7 @@ fn test_transfer() {
         vec!["10".to_string(), "12".to_string()],
     );
 
-    token.mint_copies(Sender(owner), ali, None, token_meta, token_commission, 2);
+    token.mint_copies(owner, ali, None, token_meta, token_commission, 2);
     let first_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(0));
     let second_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(1));
 
@@ -427,8 +419,8 @@ fn test_transfer() {
         token.owner_of(second_ali_token.unwrap()).unwrap(),
         Key::Account(ali)
     );
-    kyc.mint(Sender(owner), bob, None, kyc_token_meta);
-    token.transfer(Sender(ali), bob, vec![first_ali_token.unwrap()]);
+    kyc.mint(owner, bob, None, kyc_token_meta);
+    token.transfer(ali, bob, vec![first_ali_token.unwrap()]);
     let new_first_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(0));
     let new_second_ali_token = token.get_token_by_index(Key::Account(ali), U256::from(1));
     let new_first_bob_token = token.get_token_by_index(Key::Account(bob), U256::from(0));
@@ -466,7 +458,7 @@ fn test_token_meta() {
     );
 
     token.mint_copies(
-        Sender(owner),
+        owner,
         ali,
         Some(vec![token_id.clone()]),
         token_meta.clone(),
@@ -498,21 +490,16 @@ fn test_token_metadata_set_from_minter() {
     );
 
     token.mint_copies(
-        Sender(owner),
+        owner,
         ali,
         Some(vec![token_id.clone()]),
         token_meta,
         token_commission,
         1,
     );
-    token.grant_minter(Sender(owner), ali);
-    token.set_token_meta(Sender(ali), token_id.clone(), meta::medium_cask());
-    token.update_token_meta(
-        Sender(ali),
-        token_id.clone(),
-        "size".to_string(),
-        "big".to_string(),
-    );
+    token.grant_minter(owner, ali);
+    token.set_token_meta(ali, token_id.clone(), meta::medium_cask());
+    token.update_token_meta(ali, token_id.clone(), "size".to_string(), "big".to_string());
     assert_eq!(token.token_meta(token_id).unwrap(), meta::big_cask());
 }
 
@@ -531,14 +518,14 @@ fn test_token_metadata_set_from_owner() {
     );
 
     token.mint_copies(
-        Sender(owner),
+        owner,
         ali,
         Some(vec![token_id.clone()]),
         token_meta,
         token_commission,
         1,
     );
-    token.set_token_meta(Sender(ali), token_id, meta::medium_cask());
+    token.set_token_meta(ali, token_id, meta::medium_cask());
 }
 
 #[test]
@@ -555,7 +542,7 @@ fn test_token_commission_update_from_admin() {
     );
 
     token.mint_copies(
-        Sender(owner),
+        owner,
         ali,
         Some(vec![token_id.clone()]),
         token_meta,
@@ -563,7 +550,7 @@ fn test_token_commission_update_from_admin() {
         1,
     );
     token.update_token_commission(
-        Sender(owner),
+        owner,
         token_id.clone(),
         "artist".to_string(),
         owner,
@@ -580,7 +567,7 @@ fn test_token_commission_update_from_admin() {
         )
     );
     token.update_token_commission(
-        Sender(owner),
+        owner,
         token_id.clone(),
         "broker".to_string(),
         bob,
@@ -597,7 +584,7 @@ fn test_token_commission_update_from_admin() {
         )
     );
     token.update_token_commission(
-        Sender(owner),
+        owner,
         token_id.clone(),
         "broker".to_string(),
         bob,
@@ -630,16 +617,16 @@ fn test_token_commission_update_from_minter() {
     );
 
     token.mint_copies(
-        Sender(owner),
+        owner,
         ali,
         Some(vec![token_id.clone()]),
         token_meta,
         token_commission,
         1,
     );
-    token.grant_minter(Sender(owner), bob);
+    token.grant_minter(owner, bob);
     token.update_token_commission(
-        Sender(bob),
+        bob,
         token_id,
         "artist".to_string(),
         owner,
@@ -662,7 +649,7 @@ fn test_token_commission_update_from_owner() {
     );
 
     token.mint_copies(
-        Sender(owner),
+        owner,
         ali,
         Some(vec![token_id.clone()]),
         token_meta,
@@ -670,7 +657,7 @@ fn test_token_commission_update_from_owner() {
         1,
     );
     token.update_token_commission(
-        Sender(ali),
+        ali,
         token_id,
         "artist".to_string(),
         owner,
