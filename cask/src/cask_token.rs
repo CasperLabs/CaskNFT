@@ -438,20 +438,20 @@ fn call() {
     let symbol: String = runtime::get_named_arg("symbol");
     let meta: Meta = runtime::get_named_arg("meta");
     let admin: Key = runtime::get_named_arg("admin");
+    let contract_name: String = runtime::get_named_arg("contract_name");
     let kyc_package_hash: [u8; 32] = runtime::get_named_arg::<Key>(KYC_HASH)
         .into_hash()
         .unwrap_or_default();
 
-    let (package_hash, access_token) = storage::create_contract_package_at_hash();
     let mut named_keys = NamedKeys::new();
-    let contract_package_hash_wrapped = storage::new_uref(package_hash).into();
-    named_keys.insert(
-        "contract_package_hash".to_string(),
-        contract_package_hash_wrapped,
-    );
     named_keys.insert(KYC_HASH.into(), storage::new_uref(kyc_package_hash).into());
-    let (contract_hash, _) =
-        storage::add_contract_version(package_hash, get_entry_points(), named_keys);
+
+    let (contract_hash, _) = storage::new_contract(
+        get_entry_points(),
+        Some(named_keys),
+        Some(String::from("contract_package_hash")),
+        None,
+    );
 
     // Prepare constructor args
     let constructor_args = runtime_args! {
@@ -461,6 +461,13 @@ fn call() {
         "admin" => admin
     };
 
+    let package_hash = ContractPackageHash::new(
+        runtime::get_key("contract_package_hash")
+            .unwrap_or_revert()
+            .into_hash()
+            .unwrap_or_revert(),
+    );
+
     // Add the constructor group to the package hash with a single URef.
     let constructor_access: URef =
         storage::create_contract_user_group(package_hash, "constructor", 1, Default::default())
@@ -469,8 +476,7 @@ fn call() {
             .unwrap_or_revert();
 
     // Call the constructor entry point
-    let _: () =
-        runtime::call_versioned_contract(package_hash, None, "constructor", constructor_args);
+    let _: () = runtime::call_contract(contract_hash, "constructor", constructor_args);
 
     // Remove all URefs from the constructor group, so no one can call it for the second time.
     let mut urefs = BTreeSet::new();
@@ -479,15 +485,6 @@ fn call() {
         .unwrap_or_revert();
 
     // Store contract in the account's named keys.
-    let contract_name: alloc::string::String = runtime::get_named_arg("contract_name");
-    runtime::put_key(
-        &format!("{}_package_hash", contract_name),
-        package_hash.into(),
-    );
-    runtime::put_key(
-        &format!("{}_package_hash_wrapped", contract_name),
-        contract_package_hash_wrapped,
-    );
     runtime::put_key(
         &format!("{}_contract_hash", contract_name),
         contract_hash.into(),
@@ -495,10 +492,6 @@ fn call() {
     runtime::put_key(
         &format!("{}_contract_hash_wrapped", contract_name),
         storage::new_uref(contract_hash).into(),
-    );
-    runtime::put_key(
-        &format!("{}_package_access_token", contract_name),
-        access_token.into(),
     );
 }
 
