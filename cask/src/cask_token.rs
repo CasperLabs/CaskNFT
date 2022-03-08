@@ -22,9 +22,9 @@ use cep47::{
 };
 
 use casper_types::{
-    contracts::NamedKeys, runtime_args, AccessRights, ApiError, CLType, CLTyped, CLValue,
-    ContractPackageHash, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Group, Key,
-    Parameter, RuntimeArgs, URef, U256,
+    contracts::NamedKeys, runtime_args, ApiError, CLType, CLTyped, CLValue, ContractPackageHash,
+    EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Group, Key, Parameter, RuntimeArgs,
+    URef, U256,
 };
 
 mod minters_control;
