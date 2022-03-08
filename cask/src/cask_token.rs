@@ -22,9 +22,9 @@ use cep47::{
 };
 
 use casper_types::{
-    contracts::NamedKeys, runtime_args, ApiError, CLType, CLTyped, CLValue, ContractPackageHash,
-    EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Group, Key, Parameter, RuntimeArgs,
-    URef, U256,
+    contracts::NamedKeys, runtime_args, AccessRights, ApiError, CLType, CLTyped, CLValue,
+    ContractPackageHash, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Group, Key,
+    Parameter, RuntimeArgs, URef, U256,
 };
 
 mod minters_control;
@@ -450,7 +450,7 @@ fn call() {
         get_entry_points(),
         Some(named_keys),
         Some(String::from("contract_package_hash")),
-        None,
+        Some(format!("{}_package_access_token", contract_name)),
     );
 
     // Prepare constructor args
@@ -492,6 +492,10 @@ fn call() {
     runtime::put_key(
         &format!("{}_contract_hash_wrapped", contract_name),
         storage::new_uref(contract_hash).into(),
+    );
+    runtime::put_key(
+        &format!("{}_package_hash_wrapped", contract_name),
+        storage::new_uref(package_hash).into(),
     );
 }
 
